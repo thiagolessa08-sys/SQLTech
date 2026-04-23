@@ -144,6 +144,23 @@
 .chart-col .vchart{flex:1;height:auto!important;min-height:160px}
 .chart-col .hbar-row{padding:9px 0}
 .chart-col #origemBars{flex:1;display:flex;flex-direction:column;justify-content:space-between}
+/* AI card — igual ao Painel */
+.card.ai-card,.ai-card{background:linear-gradient(135deg,oklch(0.20 0.12 250) 0%,oklch(0.28 0.16 255) 100%)!important;color:#fff!important;border:1px solid oklch(0.32 0.12 250)!important;position:relative;overflow:hidden;box-shadow:0 8px 32px oklch(0.20 0.12 250/.35)!important}
+.ai-card::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 100% 0%,oklch(0.55 0.18 220/.35),transparent 55%),radial-gradient(ellipse 60% 80% at 0% 100%,oklch(0.38 0.20 270/.3),transparent 55%)}
+.ai-card>*{position:relative}
+.ai-card h3{font-size:15px;font-weight:700;margin:0 0 14px;color:#fff;display:flex;align-items:center;gap:8px}
+.ai-card h3::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:oklch(0.70 0.18 200);box-shadow:0 0 8px oklch(0.70 0.18 200/.8);animation:pulse 2s infinite}
+.ai-row{display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:10px 14px}
+.ai-row:focus-within{border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.14)}
+.ai-input{flex:1;border:none;background:transparent;font-size:13px;color:#fff;outline:none;font-family:inherit}
+.ai-input::placeholder{color:rgba(255,255,255,.5)}
+.ai-send{padding:7px 16px;background:#fff;color:oklch(0.22 0.10 250);border:none;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.2);transition:opacity .15s,transform .1s}
+.ai-send:hover{opacity:.9;transform:translateY(-1px)}.ai-send:disabled{opacity:.4}
+.ai-chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.ai-chip{font-size:11px;padding:5px 13px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);cursor:pointer;transition:background .15s;font-weight:500}
+.ai-chip:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.4)}
+.ai-resp{margin-top:14px;padding:14px 16px;font-size:12.5px;background:rgba(255,255,255,.1);border-radius:14px;color:#fff;line-height:1.7;display:none;border-left:3px solid oklch(0.65 0.18 250)}
+.ai-resp.show{display:block}
 /* table */
 .tbl-wrap{border-radius:14px;overflow:hidden;border:1px solid #c8d6e8}
 .tbl{width:100%;border-collapse:collapse;font-size:12px}
