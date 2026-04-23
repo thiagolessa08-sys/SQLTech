@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8"/>
@@ -18,12 +18,12 @@
   --line-2: oklch(0.88 0.015 130);
   --bar-track: oklch(0.95 0.015 130);
   --bar-muted: oklch(0.92 0.012 130);
-  --badge-bg: oklch(0.88 0.04 150);
-  --green: oklch(0.48 0.11 155);
-  --green-deep: oklch(0.30 0.07 155);
-  --green-ink: oklch(0.22 0.06 155);
-  --green-soft: oklch(0.94 0.03 150);
-  --green-mid: oklch(0.65 0.12 150);
+  --badge-bg: oklch(0.88 0.05 250);
+  --green: oklch(0.48 0.18 250);
+  --green-deep: oklch(0.30 0.12 250);
+  --green-ink: oklch(0.22 0.10 250);
+  --green-soft: oklch(0.94 0.04 250);
+  --green-mid: oklch(0.65 0.18 250);
   --amber: oklch(0.78 0.13 75);
   --rose: oklch(0.72 0.14 25);
   --stat-warm-bg: oklch(0.96 0.02 85);
@@ -37,8 +37,8 @@
   --ink-2: oklch(0.78 0.01 130); --ink-3: oklch(0.58 0.012 130);
   --line: oklch(0.28 0.014 150); --line-2: oklch(0.32 0.014 150);
   --bar-track: oklch(0.26 0.014 150); --bar-muted: oklch(0.30 0.014 150);
-  --badge-bg: oklch(0.34 0.06 150);
-  --green: oklch(0.64 0.13 155); --green-soft: oklch(0.30 0.05 150);
+  --badge-bg: oklch(0.34 0.08 250);
+  --green: oklch(0.64 0.20 250); --green-soft: oklch(0.30 0.08 250);
   --stat-warm-bg: oklch(0.26 0.03 75); --stat-warm-border: oklch(0.32 0.04 75);
   --shadow-sm: 0 1px 2px rgba(0,0,0,.35);
 }
@@ -60,10 +60,10 @@ body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:var(--bg
 .nav a svg { width:17px; height:17px; flex:0 0 17px; }
 .badge { margin-left:auto; background:var(--badge-bg); color:var(--green-ink); font-size:10px; padding:2px 7px; border-radius:999px; font-weight:700; }
 .promo { margin-top:auto; background:var(--green-ink); color:#fff; border-radius:16px; padding:16px; position:relative; overflow:hidden; }
-.promo::before { content:""; position:absolute; inset:0; background:radial-gradient(80% 60% at 100% 100%, oklch(0.42 0.11 155/.9),transparent 70%); }
+.promo::before { content:""; position:absolute; inset:0; background:radial-gradient(80% 60% at 100% 100%, oklch(0.42 0.18 250/.9),transparent 70%); }
 .promo>* { position:relative; }
 .promo h4 { margin:0 0 4px; font-size:14px; font-weight:700; }
-.promo p { margin:0 0 12px; font-size:12px; color:oklch(0.92 0.015 150); line-height:1.4; }
+.promo p { margin:0 0 12px; font-size:12px; color:oklch(0.92 0.015 250); line-height:1.4; }
 .promo button { border:0; background:#fff; color:var(--green-ink); padding:7px 14px; border-radius:999px; font-weight:700; font-size:12px; font-family:inherit; cursor:pointer; }
 
 /* MAIN */
@@ -107,8 +107,8 @@ body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:var(--bg
 .stat .num { font-family:'Instrument Serif',serif; font-size:34px; line-height:1; letter-spacing:-0.02em; margin:10px 0 9px; font-weight:400; }
 .stat .meta { font-size:12px; color:var(--ink-3); display:flex; align-items:center; gap:7px; }
 .stat.feature { background:var(--green-deep); color:#fff; border-color:transparent; }
-.stat.feature .lbl { color:oklch(0.92 0.02 150); }
-.stat.feature .arrow { background:oklch(0.42 0.1 155); color:#fff; }
+.stat.feature .lbl { color:oklch(0.92 0.02 250); }
+.stat.feature .arrow { background:oklch(0.42 0.18 250); color:#fff; }
 .stat.feature .meta { color:oklch(0.85 0.03 150); }
 .stat.feature::after { content:""; position:absolute; right:-20px; bottom:-50px; width:190px; height:190px; background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='190' height='190'><defs><pattern id='p' width='9' height='9' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><line x1='0' y1='0' x2='0' y2='9' stroke='white' stroke-opacity='.08' stroke-width='2.5'/></pattern></defs><circle cx='95' cy='95' r='95' fill='url(%23p)'/></svg>") no-repeat; pointer-events:none; }
 .stat.warm { background:var(--stat-warm-bg); border-color:var(--stat-warm-border); }
@@ -171,7 +171,7 @@ body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:var(--bg
 .ai-send:hover { opacity:.85; }
 .ai-send:disabled { opacity:.4; }
 .ai-chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:9px; }
-.ai-chip { font-size:11.5px; padding:4px 11px; border-radius:999px; border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.08); color:oklch(0.92 0.015 150); cursor:pointer; }
+.ai-chip { font-size:11.5px; padding:4px 11px; border-radius:999px; border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.08); color:oklch(0.92 0.015 250); cursor:pointer; }
 .ai-chip:hover { background:rgba(255,255,255,.18); }
 .ai-resp { margin-top:10px; padding:12px 14px; font-size:13px; background:rgba(255,255,255,.1); border-radius:var(--radius-sm); color:#fff; line-height:1.65; display:none; border-left:2px solid var(--green-mid); }
 .ai-resp.show { display:block; }
@@ -309,7 +309,7 @@ body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:var(--bg
         <div class="gauge">
           <svg viewBox="0 0 220 130">
             <path d="M 18 115 A 92 92 0 0 1 202 115" fill="none" stroke="oklch(0.92 0.015 130)" stroke-width="24" stroke-linecap="round"/>
-            <path id="gaugeArc" d="M 18 115 A 92 92 0 0 1 18 115" fill="none" stroke="oklch(0.48 0.11 155)" stroke-width="24" stroke-linecap="round"/>
+            <path id="gaugeArc" d="M 18 115 A 92 92 0 0 1 18 115" fill="none" stroke="oklch(0.48 0.18 250)" stroke-width="24" stroke-linecap="round"/>
           </svg>
           <div class="val"><b id="gaugeVal">—</b><span>empenho / receita</span></div>
         </div>
@@ -360,7 +360,7 @@ body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:var(--bg
 
 <script>
 const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-const paleta = ['oklch(0.36 0.08 155)','oklch(0.48 0.11 155)','oklch(0.55 0.12 155)','oklch(0.65 0.12 150)','oklch(0.72 0.11 155)','oklch(0.78 0.09 150)','oklch(0.82 0.07 150)'];
+const paleta = ['oklch(0.36 0.08 155)','oklch(0.48 0.18 250)','oklch(0.55 0.12 155)','oklch(0.65 0.18 250)','oklch(0.72 0.11 155)','oklch(0.78 0.09 150)','oklch(0.82 0.07 150)'];
 let anos = [], currentBarAno = 2024;
 
 function fmt(v) {
