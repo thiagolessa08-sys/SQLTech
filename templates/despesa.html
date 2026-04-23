@@ -77,13 +77,13 @@
 <!-- FUNCIONAL VIEW -->
 <div id="view-funcional">
   <div class="grid" style="margin-bottom:14px">
-    <div class="card c-4">
+    <div class="card c-4 chart-col">
       <div class="sec-head"><h3>Dot. Inicial por Secretaria</h3></div>
-      <div id="secBars"><div style="color:var(--ink-3);font-size:12px">Carregando…</div></div>
+      <div id="secBars" style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly"></div>
     </div>
-    <div class="card c-5">
-      <div class="sec-head"><h3>Dotação Inicial por Categoria</h3><button class="chip-btn">Detalhes</button></div>
-      <div class="donut-wrap2">
+    <div class="card c-5 chart-col">
+      <div class="sec-head"><h3>Dotação por Categoria</h3><button class="chip-btn">Detalhes</button></div>
+      <div class="donut-wrap2" style="flex:1">
         <div class="donut2">
           <svg viewBox="0 0 120 120" id="donutCatSvg">
             <circle cx="60" cy="60" r="44" fill="none" stroke="var(--bar-track)" stroke-width="16"/>
@@ -201,18 +201,20 @@
 .view-tab{background:transparent;border:none;border-bottom:2px solid transparent;padding:8px 18px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink-3);cursor:pointer;margin-bottom:-1px}
 .view-tab.on{color:var(--green);border-bottom-color:var(--green)}
 .view-tab:hover{color:var(--ink)}
-/* donut */
-.donut-wrap2{display:flex!important;flex-direction:column!important;align-items:center!important;gap:12px!important}
-.donut2{position:relative!important;width:140px!important;height:140px!important;flex-shrink:0!important;max-width:140px!important;max-height:140px!important}
-.donut2 svg{width:140px!important;height:140px!important;transform:rotate(-90deg)}
+/* donut — esquerda/direita */
+.donut-wrap2{display:flex!important;flex-direction:row!important;align-items:center!important;gap:18px!important}
+.donut2{position:relative!important;width:150px!important;height:150px!important;flex-shrink:0!important}
+.donut2 svg{width:150px!important;height:150px!important;transform:rotate(-90deg)}
 .donut2 .center{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
-.donut2 .center b{font-family:'Instrument Serif',serif;font-size:20px;font-weight:400;line-height:1;display:block}
+.donut2 .center b{font-family:'Instrument Serif',serif;font-size:18px;font-weight:400;line-height:1;display:block}
 .donut2 .center span{font-size:9px;color:#888;display:block;margin-top:2px}
-.donut-list{display:grid!important;grid-template-columns:1fr 1fr!important;gap:5px 10px!important;width:100%!important}
-.donut-list .row{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:8px;background:#f5f7fa;border:1px solid #e2e8f0}
+.donut-list{display:flex!important;flex-direction:column!important;gap:5px!important;flex:1!important}
+.donut-list .row{display:flex;align-items:center;gap:7px;padding:5px 9px;border-radius:8px;background:#f5f7fa;border:1px solid #e2e8f0}
 .donut-list i{display:block;width:9px;height:9px;border-radius:3px;flex-shrink:0}
-.donut-list .lbl{color:#4a5568;font-weight:500;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.donut-list .pct{font-weight:700;font-size:10.5px;color:#1a3a5c;flex-shrink:0}
+.donut-list .lbl{color:#4a5568;font-weight:500;font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.donut-list .pct{font-weight:700;font-size:11px;color:#1a3a5c;flex-shrink:0;font-family:'JetBrains Mono',monospace}
+/* chart cards proporcionais */
+.chart-col{display:flex;flex-direction:column}
 /* table */
 .tbl-wrap{border-radius:14px;overflow:hidden;border:1px solid #c8d6e8}
 .tbl{width:100%;border-collapse:collapse;font-size:12px}
