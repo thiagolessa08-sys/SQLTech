@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: oklch(0.97 0.008 95);
+  --bg: oklch(0.955 0.015 240);
   --surface: #ffffff;
   --surface-2: oklch(0.96 0.01 130);
   --ink: oklch(0.18 0.02 150);
@@ -96,7 +96,7 @@ body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:var(--bg
 .btn-ghost { background:var(--surface); border-color:var(--line-2,var(--line)); color:var(--ink); }
 
 .grid { display:grid; grid-template-columns:repeat(12,1fr); gap:16px; }
-.card { background:var(--surface); border-radius:var(--radius); border:1px solid var(--line); padding:20px; }
+.card { background:var(--surface); border-radius:var(--radius); border:1px solid var(--line); padding:20px; box-shadow:0 1px 3px rgba(0,0,0,.04); }
 .c-3{grid-column:span 3} .c-4{grid-column:span 4} .c-5{grid-column:span 5}
 .c-6{grid-column:span 6} .c-7{grid-column:span 7} .c-8{grid-column:span 8} .c-12{grid-column:span 12}
 
@@ -159,26 +159,27 @@ body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:var(--bg
 .legend i { display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
 
 /* AI */
-.ai-card { background:var(--green-deep); color:#fff; border-color:transparent; position:relative; overflow:hidden; }
-.ai-card::before { content:""; position:absolute; inset:0; background:radial-gradient(70% 60% at 0% 100%,oklch(0.42 0.11 155/.85),transparent 70%); }
+.ai-card { background:linear-gradient(135deg,oklch(0.20 0.12 250) 0%,oklch(0.28 0.16 255) 100%); color:#fff; border:1px solid oklch(0.32 0.12 250); position:relative; overflow:hidden; box-shadow:0 8px 32px oklch(0.20 0.12 250/.35); }
+.ai-card::before { content:""; position:absolute; inset:0; background:radial-gradient(ellipse 80% 60% at 100% 0%,oklch(0.55 0.18 220/.35),transparent 55%),radial-gradient(ellipse 60% 80% at 0% 100%,oklch(0.38 0.20 270/.3),transparent 55%); }
 .ai-card>* { position:relative; }
-.ai-card h3 { font-size:15px; font-weight:700; margin:0 0 12px; color:#fff; }
-.ai-row { display:flex; gap:8px; align-items:center; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); border-radius:12px; padding:9px 13px; }
-.ai-row:focus-within { border-color:rgba(255,255,255,.5); }
+.ai-card h3 { font-size:15px; font-weight:700; margin:0 0 14px; color:#fff; display:flex; align-items:center; gap:8px; }
+.ai-card h3::before { content:""; display:inline-block; width:8px; height:8px; border-radius:50%; background:oklch(0.70 0.18 200); box-shadow:0 0 8px oklch(0.70 0.18 200/.8); animation:pulse 2s infinite; }
+.ai-row { display:flex; gap:8px; align-items:center; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); border-radius:14px; padding:10px 14px; }
+.ai-row:focus-within { border-color:rgba(255,255,255,.5); background:rgba(255,255,255,.14); }
 .ai-input { flex:1; border:none; background:transparent; font-size:13px; color:#fff; outline:none; font-family:'Plus Jakarta Sans',inherit; }
-.ai-input::placeholder { color:oklch(0.85 0.03 150); }
-.ai-send { padding:6px 14px; background:#fff; color:var(--green-ink); border:none; border-radius:999px; font-size:12px; font-weight:700; cursor:pointer; flex-shrink:0; font-family:inherit; }
-.ai-send:hover { opacity:.85; }
+.ai-input::placeholder { color:rgba(255,255,255,.5); }
+.ai-send { padding:7px 16px; background:#fff; color:oklch(0.22 0.10 250); border:none; border-radius:999px; font-size:12px; font-weight:700; cursor:pointer; flex-shrink:0; font-family:inherit; box-shadow:0 2px 8px rgba(0,0,0,.2); transition:opacity .15s,transform .1s; }
+.ai-send:hover { opacity:.9; transform:translateY(-1px); }
 .ai-send:disabled { opacity:.4; }
-.ai-chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:9px; }
-.ai-chip { font-size:11.5px; padding:4px 11px; border-radius:999px; border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.08); color:oklch(0.92 0.015 250); cursor:pointer; }
-.ai-chip:hover { background:rgba(255,255,255,.18); }
-.ai-resp { margin-top:10px; padding:12px 14px; font-size:13px; background:rgba(255,255,255,.1); border-radius:var(--radius-sm); color:#fff; line-height:1.65; display:none; border-left:2px solid var(--green-mid); }
+.ai-chips { display:flex; gap:7px; flex-wrap:wrap; margin-top:12px; }
+.ai-chip { font-size:11px; padding:5px 13px; border-radius:999px; border:1px solid rgba(255,255,255,.22); background:rgba(255,255,255,.1); color:rgba(255,255,255,.85); cursor:pointer; transition:background .15s; font-weight:500; }
+.ai-chip:hover { background:rgba(255,255,255,.22); border-color:rgba(255,255,255,.4); }
+.ai-resp { margin-top:14px; padding:14px 16px; font-size:12.5px; background:rgba(255,255,255,.1); border-radius:14px; color:#fff; line-height:1.7; display:none; border-left:3px solid oklch(0.65 0.18 250); }
 .ai-resp.show { display:block; }
 .chip-btn { border:1px solid var(--line-2,var(--line)); background:var(--surface); font-size:11.5px; font-weight:600; color:var(--ink-2); padding:5px 11px; border-radius:999px; cursor:pointer; font-family:inherit; }
 .loading { opacity:.4; font-size:13px; }
-.typing { display:inline-flex; gap:3px; align-items:center; }
-.typing span { width:5px; height:5px; border-radius:50%; background:var(--green-mid); animation:bounce 1.2s infinite; }
+.typing { display:inline-flex; gap:4px; align-items:center; }
+.typing span { width:6px; height:6px; border-radius:50%; background:oklch(0.65 0.18 250); animation:bounce 1.2s infinite; }
 .typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
 @keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
 [data-theme="dark"] .btn-primary { color:oklch(0.14 0.02 150); }
@@ -360,7 +361,7 @@ body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:var(--bg
 
 <script>
 const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-const paleta = ['oklch(0.36 0.08 155)','oklch(0.48 0.18 250)','oklch(0.55 0.12 155)','oklch(0.65 0.18 250)','oklch(0.72 0.11 155)','oklch(0.78 0.09 150)','oklch(0.82 0.07 150)'];
+const paleta = ['oklch(0.30 0.18 250)','oklch(0.42 0.18 250)','oklch(0.54 0.17 250)','oklch(0.63 0.16 250)','oklch(0.70 0.14 250)','oklch(0.77 0.11 250)','oklch(0.82 0.08 250)'];
 let anos = [], currentBarAno = 2024;
 
 function fmt(v) {
