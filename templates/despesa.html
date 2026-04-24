@@ -68,7 +68,7 @@
 </div>
 
 <!-- VIEW TABS -->
-<div style="display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:14px">
+<div style="background:var(--surface);border-radius:14px 14px 0 0;border:1px solid var(--line);border-bottom:none;padding:0 8px;display:flex;gap:0;margin-bottom:0">
   <button class="view-tab on" onclick="switchView('funcional',this)">Funcional</button>
   <button class="view-tab" onclick="switchView('detalhamento',this)">Detalhamento</button>
   <button class="view-tab" onclick="switchView('fornecedores',this)">Secretarias</button>
@@ -198,7 +198,7 @@
 
 {% block extra_style %}
 <style>
-.view-tab{background:transparent;border:none;border-bottom:2px solid transparent;padding:8px 18px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink-3);cursor:pointer;margin-bottom:-1px}
+.view-tab{background:transparent;border:none;border-bottom:3px solid transparent;padding:12px 18px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink-3);cursor:pointer;margin-bottom:-1px;transition:color .15s}
 .view-tab.on{color:var(--green);border-bottom-color:var(--green)}
 .view-tab:hover{color:var(--ink)}
 /* donut — esquerda/direita */
