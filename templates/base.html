@@ -80,8 +80,10 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);c
 .card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--line);padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.04);transition:box-shadow .2s}
 .card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08)}
 .c-2{grid-column:span 2}.c-3{grid-column:span 3}.c-4{grid-column:span 4}.c-5{grid-column:span 5}.c-6{grid-column:span 6}.c-7{grid-column:span 7}.c-8{grid-column:span 8}.c-9{grid-column:span 9}.c-12{grid-column:span 12}
+/* chart cards */
+.chart-col{display:flex;flex-direction:column;min-height:260px}
 /* KPI stat */
-.stat{position:relative;overflow:hidden;padding:16px}
+.stat{position:relative;overflow:hidden;padding:18px;min-height:128px}
 .stat .lbl{font-size:11.5px;font-weight:600;color:var(--ink-2);display:flex;align-items:center;justify-content:space-between}
 .stat .arrow{width:24px;height:24px;border-radius:999px;background:var(--surface-2);display:grid;place-items:center}
 .stat .num{font-family:'Instrument Serif',serif;font-size:34px;line-height:1;letter-spacing:-0.02em;margin:10px 0 8px;font-weight:400}
@@ -201,6 +203,10 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);c
       <a href="/chat" class="{% block nav_chat %}{% endblock %}">
         <svg viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
         Chat IA
+      </a>
+      <a href="/bases" class="{% block nav_bases %}{% endblock %}">
+        <svg viewBox="0 0 24 24" fill="none"><ellipse cx="12" cy="5" rx="9" ry="3" stroke="currentColor" stroke-width="1.8"/><path d="M21 12c0 1.66-4.03 3-9 3S3 13.66 3 12M21 5v14c0 1.66-4.03 3-9 3S3 20.66 3 19V5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        Bases de Dados
       </a>
     </nav>
   </div>

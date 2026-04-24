@@ -121,7 +121,7 @@ body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:var(--bg
 .c-6{grid-column:span 6} .c-7{grid-column:span 7} .c-8{grid-column:span 8} .c-12{grid-column:span 12}
 
 /* STAT */
-.stat { position:relative; overflow:hidden; padding:16px; }
+.stat { position:relative; overflow:hidden; padding:18px; min-height:128px; }
 .stat .lbl { font-size:12px; font-weight:600; color:var(--ink-2); display:flex; align-items:center; justify-content:space-between; }
 .stat .arrow { width:26px; height:26px; border-radius:999px; background:var(--surface-2); display:grid; place-items:center; }
 .stat .num { font-family:'Instrument Serif',serif; font-size:34px; line-height:1; letter-spacing:-0.02em; margin:10px 0 9px; font-weight:400; }
@@ -164,10 +164,10 @@ body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:var(--bg
 .donut .center b { font-family:'Instrument Serif',serif; font-size:18px; font-weight:400; line-height:1; display:block; }
 .donut .center span { font-size:9px; color:var(--ink-3); display:block; margin-top:2px; }
 .donut-legend { display:flex; flex-direction:column; gap:5px; flex:1; }
-.donut-legend .row { display:flex; align-items:center; gap:7px; padding:5px 9px; border-radius:8px; background:#f5f7fa; border:1px solid #e2e8f0; }
+.donut-legend .row { display:flex; align-items:center; gap:7px; padding:5px 9px; border-radius:8px; background:var(--surface-2); border:1px solid var(--line); }
 .donut-legend i { display:block; width:9px; height:9px; border-radius:3px; flex-shrink:0; }
-.donut-legend .lbl { color:#4a5568; font-weight:500; font-size:10.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
-.donut-legend .pct { font-weight:700; font-family:'JetBrains Mono',monospace; font-size:11px; color:#1a3a5c; flex-shrink:0; }
+.donut-legend .lbl { color:var(--ink-2); font-weight:500; font-size:10.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+.donut-legend .pct { font-weight:700; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink); flex-shrink:0; }
 
 /* GAUGE */
 .gauge-wrap { display:grid; place-items:center; padding:12px 0 2px; }
@@ -236,9 +236,9 @@ body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:var(--bg
         <svg viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
         Chat IA
       </a>
-      <a href="#">
-        <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        Relatórios
+      <a href="/bases">
+        <svg viewBox="0 0 24 24" fill="none"><ellipse cx="12" cy="5" rx="9" ry="3" stroke="currentColor" stroke-width="1.8"/><path d="M21 12c0 1.66-4.03 3-9 3S3 13.66 3 12M21 5v14c0 1.66-4.03 3-9 3S3 20.66 3 19V5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        Bases de Dados
       </a>
     </nav>
   </div>
@@ -293,10 +293,12 @@ body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:var(--bg
       </button>
       <div class="user-info">
         <div class="user-details">
-          <div class="user-name">Prefeitura Municipal</div>
-          <div class="user-email">orcamento@municipal.gov.br</div>
+          <div class="user-name">{{ session.get('user_name','Usuário') }}</div>
+          <div class="user-email">{{ session.get('user_email','') }}</div>
         </div>
-        <div class="user-av">PM</div>
+        <a href="/logout" class="user-av" title="Sair" style="text-decoration:none;cursor:pointer">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
       </div>
     </div>
   </div>

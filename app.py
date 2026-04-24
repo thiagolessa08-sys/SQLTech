@@ -1,6 +1,8 @@
 from flask import Flask, jsonify, render_template, request, session, redirect, url_for
 from functools import wraps
-import sqlite3, os, requests
+import sqlite3, os, requests, json, re, time
+from datetime import datetime
+import pandas as pd
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "sqltech-orcamento-2026-xK9m")
@@ -51,6 +53,83 @@ def query(sql, params=()):
     rows = [dict(r) for r in cur.fetchall()]
     con.close()
     return rows
+
+# ── Bases de Dados ────────────────────────────────────────────────────────
+def init_catalog():
+    con = sqlite3.connect(DB_PATH)
+    con.execute('''CREATE TABLE IF NOT EXISTS _bases_catalog (
+        name TEXT PRIMARY KEY,
+        label TEXT,
+        filename TEXT,
+        rows INTEGER,
+        cols TEXT,
+        uploaded_at TEXT
+    )''')
+    con.commit()
+    con.close()
+
+init_catalog()
+
+@app.route("/api/bases")
+@login_required
+def bases_list():
+    rows = query("SELECT name, label, filename, rows, cols, uploaded_at FROM _bases_catalog ORDER BY uploaded_at DESC")
+    return jsonify(rows)
+
+@app.route("/api/bases/upload", methods=["POST"])
+@login_required
+def bases_upload():
+    f = request.files.get("file")
+    label = request.form.get("label", "").strip()
+    if not f or not f.filename:
+        return jsonify({"error": "Nenhum arquivo enviado"}), 400
+    filename = f.filename
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ("csv", "xlsx", "xls"):
+        return jsonify({"error": "Formato não suportado. Use CSV ou Excel (.csv, .xlsx, .xls)"}), 400
+    name = re.sub(r"[^a-z0-9]", "_", filename.rsplit(".", 1)[0].lower())[:40]
+    existing = query("SELECT name FROM _bases_catalog WHERE name=?", (name,))
+    if existing:
+        name = name[:36] + "_" + str(int(time.time()))[-3:]
+    try:
+        if ext == "csv":
+            df = pd.read_csv(f, encoding="utf-8", sep=None, engine="python")
+        else:
+            df = pd.read_excel(f)
+    except Exception as e:
+        return jsonify({"error": f"Erro ao ler arquivo: {str(e)}"}), 400
+    con = sqlite3.connect(DB_PATH)
+    df.to_sql(f"base_{name}", con, if_exists="replace", index=False)
+    cols_info = json.dumps([{"col": c, "type": str(df[c].dtype)} for c in df.columns])
+    con.execute("INSERT OR REPLACE INTO _bases_catalog VALUES (?,?,?,?,?,?)",
+        (name, label or filename, filename, len(df), cols_info, datetime.now().strftime("%Y-%m-%d %H:%M")))
+    con.commit()
+    con.close()
+    return jsonify({"ok": True, "name": name, "rows": len(df), "cols": len(df.columns)})
+
+@app.route("/api/bases/<name>/preview")
+@login_required
+def bases_preview(name):
+    name = re.sub(r"[^a-z0-9_]", "_", name)
+    try:
+        rows = query(f"SELECT * FROM base_{name} LIMIT 10")
+        return jsonify(rows)
+    except Exception:
+        return jsonify({"error": "Base não encontrada"}), 404
+
+@app.route("/api/bases/<name>", methods=["DELETE"])
+@login_required
+def bases_delete(name):
+    name = re.sub(r"[^a-z0-9_]", "_", name)
+    try:
+        con = sqlite3.connect(DB_PATH)
+        con.execute(f"DROP TABLE IF EXISTS base_{name}")
+        con.execute("DELETE FROM _bases_catalog WHERE name=?", (name,))
+        con.commit()
+        con.close()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/anos")
 def anos():
@@ -180,6 +259,13 @@ def chat_context():
     cat_2024 = query('SELECT "Descrição Categoria Econômica Receita" AS categoria, SUM("Valor Arrecadação Receita") AS total FROM receita WHERE "Número Ano"=2024 GROUP BY categoria ORDER BY total DESC')
     # Despesa por secretaria 2024
     sec_2024 = query('SELECT "Descrição Unidade Orçamentária" AS secretaria, SUM("Valor Mês Empenhado") AS empenhado FROM despesa WHERE "Número Ano"=2024 GROUP BY secretaria ORDER BY empenhado DESC NULLS LAST LIMIT 10')
+    # Bases de dados adicionais
+    try:
+        bases = query("SELECT name, label, rows, cols FROM _bases_catalog ORDER BY uploaded_at DESC")
+        bases_info = [{"name": b["name"], "label": b["label"], "registros": b["rows"],
+                       "colunas": [c["col"] for c in json.loads(b["cols"] or "[]")]} for b in bases]
+    except Exception:
+        bases_info = []
     return jsonify({
         "anos_receita": [r["ano"] for r in anos_rec],
         "anos_despesa": [r["ano"] for r in anos_desp],
@@ -195,7 +281,8 @@ def chat_context():
         "receita_mensal": mensal,
         "despesa_mensal": desp_mensal,
         "receita_categoria_2024": [{"categoria": r["categoria"], "total": r["total"]} for r in cat_2024],
-        "despesa_secretaria_2024": [{"secretaria": r["secretaria"], "empenhado": r["empenhado"]} for r in sec_2024]
+        "despesa_secretaria_2024": [{"secretaria": r["secretaria"], "empenhado": r["empenhado"]} for r in sec_2024],
+        "bases_adicionais": bases_info
     })
 
 @app.route("/")
@@ -217,6 +304,11 @@ def despesa_page():
 @login_required
 def chat_page():
     return render_template("chat.html")
+
+@app.route("/bases")
+@login_required
+def bases_page():
+    return render_template("bases.html")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
