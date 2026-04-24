@@ -54,7 +54,7 @@ body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:var(--bg
 .brand-name em { font-style:italic; color:var(--green); font-family:'Instrument Serif',serif; }
 .nav-label { font-size:10.5px; letter-spacing:.14em; color:var(--ink-3); font-weight:600; padding:0 10px; text-transform:uppercase; margin-bottom:6px; }
 .nav { display:flex; flex-direction:column; gap:2px; }
-.nav a { display:flex; align-items:center; gap:10px; padding:10px 11px; border-radius:10px; color:var(--ink-2); text-decoration:none; font-size:13.5px; font-weight:500; }
+.nav a { display:flex; align-items:center; gap:10px; padding:10px 11px; border-radius:10px; color:var(--ink-2); text-decoration:none; font-size:13.5px; font-weight:500; transition:background .15s,color .15s; }
 .nav a:hover { background:var(--green-soft); color:var(--ink); }
 .nav a.active { background:var(--green); color:#fff; }
 .nav a svg { width:17px; height:17px; flex:0 0 17px; }
@@ -89,14 +89,16 @@ body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:var(--bg
 .page-title em { font-style:italic; color:var(--green); }
 .page-sub { color:var(--ink-2); font-size:13.5px; }
 .actions { display:flex; gap:9px; }
-.btn { font-family:inherit; font-weight:600; font-size:13px; padding:10px 16px; border-radius:11px; cursor:pointer; display:inline-flex; align-items:center; gap:7px; border:1px solid transparent; transition:transform .08s; }
+.btn { font-family:inherit; font-weight:600; font-size:13px; padding:10px 16px; border-radius:11px; cursor:pointer; display:inline-flex; align-items:center; gap:7px; border:1px solid transparent; transition:background .15s,transform .08s,box-shadow .1s; }
 .btn:active { transform:translateY(1px); }
 .btn-primary { background:var(--green); color:#fff; }
 .btn-primary:hover { background:var(--green-ink); }
 .btn-ghost { background:var(--surface); border-color:var(--line-2,var(--line)); color:var(--ink); }
+.btn-ghost:hover { background:var(--surface-2); }
 
 .grid { display:grid; grid-template-columns:repeat(12,1fr); gap:16px; }
-.card { background:var(--surface); border-radius:var(--radius); border:1px solid var(--line); padding:20px; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+.card { background:var(--surface); border-radius:var(--radius); border:1px solid var(--line); padding:20px; box-shadow:0 1px 3px rgba(0,0,0,.04); transition:box-shadow .2s; }
+.card:hover { box-shadow:0 4px 16px rgba(0,0,0,.08); }
 .c-3{grid-column:span 3} .c-4{grid-column:span 4} .c-5{grid-column:span 5}
 .c-6{grid-column:span 6} .c-7{grid-column:span 7} .c-8{grid-column:span 8} .c-12{grid-column:span 12}
 
@@ -117,10 +119,11 @@ body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:var(--bg
 .ana-head,.card-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
 .ana-head h3,.card-head h3 { margin:0; font-size:15px; font-weight:700; }
 .tabs-pill { display:flex; background:var(--surface-2); border-radius:999px; padding:3px; font-size:11.5px; font-weight:600; }
-.tabs-pill button { border:0; background:transparent; padding:5px 12px; border-radius:999px; cursor:pointer; color:var(--ink-2); font-family:inherit; font-weight:600; }
+.tabs-pill button { border:0; background:transparent; padding:5px 12px; border-radius:999px; cursor:pointer; color:var(--ink-2); font-family:inherit; font-weight:600; transition:background .15s,color .15s; }
 .tabs-pill button.on { background:var(--surface); color:var(--ink); box-shadow:var(--shadow-sm); }
+.chip-btn { border:1px solid var(--line-2,var(--line)); background:var(--surface); font-size:11.5px; font-weight:600; color:var(--ink-2); padding:5px 11px; border-radius:999px; cursor:pointer; font-family:inherit; transition:background .15s; }
 
-.vchart { display:grid; gap:10px; align-items:end; height:160px; padding:0 2px; }
+.vchart { display:grid; gap:10px; align-items:end; height:190px; padding:0 2px; }
 .bar { position:relative; border-radius:16px; background:var(--bar-track); overflow:hidden; width:100%; height:100%; display:flex; align-items:flex-end; justify-content:center; }
 .bar .fill { width:100%; border-radius:16px; background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'><defs><pattern id='p' width='5' height='5' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><line x1='0' y1='0' x2='0' y2='5' stroke='white' stroke-opacity='.28' stroke-width='1.3'/></pattern></defs><rect width='8' height='8' fill='url(%23p)'/></svg>"),var(--green); }
 .bar.muted .fill { background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'><defs><pattern id='p' width='5' height='5' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><line x1='0' y1='0' x2='0' y2='5' stroke='%23222' stroke-opacity='.07' stroke-width='1.3'/></pattern></defs><rect width='8' height='8' fill='url(%23p)'/></svg>"),var(--bar-muted); }
@@ -128,10 +131,10 @@ body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:var(--bg
 .xlabels { display:grid; gap:10px; padding:7px 2px 0; text-align:center; font-size:11px; color:var(--ink-3); font-weight:600; }
 
 /* HBARS */
-.hbar-row { display:grid; grid-template-columns:96px 1fr 64px; gap:10px; align-items:center; padding:8px 0; border-bottom:1px dashed var(--line); }
+.hbar-row { display:grid; grid-template-columns:1fr 2fr 70px; gap:8px; align-items:center; padding:8px 0; border-bottom:1px dashed var(--line); }
 .hbar-row:last-child { border-bottom:0; }
-.hbar-row .hname { font-size:12.5px; font-weight:600; }
-.hbar-row .hval { font-size:12px; color:var(--ink-2); font-weight:600; text-align:right; font-family:'JetBrains Mono',monospace; }
+.hbar-row .hname { font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hbar-row .hval { font-size:11.5px; color:var(--ink-2); font-weight:600; text-align:right; font-family:'JetBrains Mono',monospace; }
 .hbar { height:9px; background:var(--bar-track); border-radius:999px; overflow:hidden; }
 .hbar i { display:block; height:100%; border-radius:999px; background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'><defs><pattern id='p' width='5' height='5' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><line x1='0' y1='0' x2='0' y2='5' stroke='white' stroke-opacity='.28' stroke-width='1.3'/></pattern></defs><rect width='8' height='8' fill='url(%23p)'/></svg>"),var(--green); }
 
