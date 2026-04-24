@@ -68,12 +68,23 @@ body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:var(--bg
 
 /* MAIN */
 .main { padding:20px 24px 32px; }
-.topbar { display:grid; grid-template-columns:1fr auto; align-items:center; gap:20px; margin-bottom:22px; }
-.search { display:flex; align-items:center; gap:9px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:9px 13px; max-width:400px; width:100%; }
-.search input { flex:1; border:0; outline:0; background:transparent; font-family:inherit; font-size:13.5px; color:var(--ink); }
-.search input::placeholder { color:var(--ink-3); }
-.topbar-right { display:flex; align-items:center; gap:12px; }
-.year-sel { font-size:13px; font-weight:600; font-family:inherit; border:1px solid var(--line-2,var(--line)); border-radius:10px; padding:8px 12px; background:var(--surface); color:var(--ink); cursor:pointer; }
+.topbar { display:flex; align-items:center; justify-content:space-between; gap:16px; padding-bottom:12px; border-bottom:1px solid var(--line); margin-bottom:0; }
+.topbar-chat { display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:8px 14px; flex:0 1 380px; }
+.topbar-chat-label { font-size:13px; font-weight:700; color:var(--ink); white-space:nowrap; display:flex; align-items:center; gap:6px; }
+.topbar-chat input { flex:1; border:0; outline:0; background:transparent; font-family:inherit; font-size:13px; color:var(--ink); }
+.topbar-chat input::placeholder { color:var(--ink-3); }
+.topbar-right { display:flex; align-items:center; gap:10px; }
+.btn-limpar { font-family:inherit; font-size:12px; font-weight:600; padding:7px 13px; border-radius:999px; border:1px solid var(--line-2,var(--line)); background:var(--surface); color:var(--ink-2); cursor:pointer; white-space:nowrap; transition:background .15s; }
+.btn-limpar:hover { background:var(--surface-2); }
+.user-info { display:flex; align-items:center; gap:10px; }
+.user-details { text-align:right; line-height:1.3; }
+.user-name { font-size:13px; font-weight:700; color:var(--ink); }
+.user-email { font-size:11px; color:var(--ink-3); }
+.filter-bar { display:flex; align-items:center; gap:6px; padding:10px 0; margin-bottom:20px; flex-wrap:wrap; }
+.filter-btn { font-family:inherit; font-size:12.5px; font-weight:600; padding:6px 14px; border-radius:999px; border:1px solid var(--line); background:var(--surface); color:var(--ink-2); cursor:pointer; transition:background .15s,color .15s,border-color .15s; white-space:nowrap; }
+.filter-btn:hover { background:var(--green-soft); color:var(--ink); }
+.filter-btn.on { background:var(--green); color:#fff; border-color:var(--green); }
+.filter-divider { width:1px; height:22px; background:var(--line-2); flex-shrink:0; margin:0 2px; }
 .icon-btn { width:38px; height:38px; background:var(--surface); border:1px solid var(--line); border-radius:11px; display:grid; place-items:center; cursor:pointer; position:relative; }
 .dot-notif { position:absolute; top:9px; right:10px; width:7px; height:7px; background:var(--rose); border:2px solid var(--surface); border-radius:999px; }
 .user-av { width:38px; height:38px; border-radius:999px; display:grid; place-items:center; color:#fff; font-weight:700; font-size:12px; background:var(--green-ink); }
@@ -238,15 +249,14 @@ body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:var(--bg
 <!-- MAIN -->
 <main class="main">
   <div class="topbar">
-    <div class="search">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="var(--ink-3)" stroke-width="1.8"/><path d="M20 20l-3.5-3.5" stroke="var(--ink-3)" stroke-width="1.8" stroke-linecap="round"/></svg>
-      <input placeholder="Buscar função, unidade orçamentária…"/>
+    <div class="topbar-chat">
+      <div class="topbar-chat-label">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        Chat IA:
+      </div>
+      <input id="topbarChat" placeholder="Pergunte algo sobre os dados…" onkeydown="if(event.key==='Enter')askAITopbarIndex()"/>
     </div>
     <div class="topbar-right">
-      <div style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-3)">
-        <div class="ai-pulse"></div> IA ativa
-      </div>
-      <select class="year-sel" id="anoSel" onchange="loadAll()"></select>
       <div class="theme-toggle">
         <button id="themeLight" class="on" onclick="setTheme('light')">
           <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
@@ -255,8 +265,25 @@ body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:var(--bg
           <svg viewBox="0 0 24 24" fill="none"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
         </button>
       </div>
-      <div class="user-av">PM</div>
+      <button class="btn-limpar" onclick="clearIndexFilters()">× Limpar filtros</button>
+      <button class="icon-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="var(--ink-3)" stroke-width="1.8"/><path d="M22 6l-10 7L2 6" stroke="var(--ink-3)" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      <button class="icon-btn" style="position:relative">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke="var(--ink-3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="dot-notif"></div>
+      </button>
+      <div class="user-info">
+        <div class="user-details">
+          <div class="user-name">Prefeitura Municipal</div>
+          <div class="user-email">orcamento@municipal.gov.br</div>
+        </div>
+        <div class="user-av">PM</div>
+      </div>
     </div>
+  </div>
+  <div class="filter-bar" id="yearFilterBar">
+    <!-- preenchido por initAnos() -->
   </div>
 
   <div class="page-head">
@@ -377,16 +404,41 @@ function fmt(v) {
 function fmtShort(v) { return v ? 'R$' + (+v/1e6).toFixed(0) + 'M' : '—'; }
 function get(url) { return fetch(url).then(r => r.json()); }
 
+let currentAno = 2024;
+
 async function initAnos() {
   anos = await get('/api/anos');
-  const sel = document.getElementById('anoSel');
-  sel.innerHTML = anos.map(a => `<option value="${a}" ${a==2024?'selected':''}>${a}</option>`).join('');
+  // filter bar com botões de ano
+  const bar = document.getElementById('yearFilterBar');
+  bar.innerHTML = anos.map(a =>
+    `<button class="filter-btn${a==2024?' on':''}" onclick="setIndexAno(this,${a})">${a}</button>`
+  ).join('');
+  // bar chart tabs
   const tabsEl = document.getElementById('barTabs');
   tabsEl.innerHTML = anos.map(a => `<button class="${a==2024?'on':''}" onclick="switchBarAno(this,${a})">${a}</button>`).join('');
 }
 
+function setIndexAno(btn, ano) {
+  currentAno = ano;
+  document.querySelectorAll('#yearFilterBar .filter-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  loadAll();
+}
+
+function clearIndexFilters() {
+  const firstBtn = document.querySelector('#yearFilterBar .filter-btn');
+  if(firstBtn) { setIndexAno(firstBtn, +firstBtn.textContent); }
+}
+
+async function askAITopbarIndex() {
+  const q = document.getElementById('topbarChat').value.trim(); if(!q) return;
+  const aiInput = document.getElementById('aiInput');
+  if(aiInput){ aiInput.value=q; document.getElementById('aiResp').className='ai-resp show'; askAI(); }
+  document.getElementById('topbarChat').value = '';
+}
+
 async function loadAll() {
-  const ano = +document.getElementById('anoSel').value;
+  const ano = currentAno;
   const [kpi, mensal, funcao, cat] = await Promise.all([
     get(`/api/kpis?ano=${ano}`),
     get(`/api/receita-mensal?ano=${ano}`),

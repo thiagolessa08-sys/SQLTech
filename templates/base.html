@@ -29,12 +29,25 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);c
 .promo p{margin:0 0 10px;font-size:11.5px;color:oklch(0.92 0.015 250);line-height:1.4}
 .promo button{border:0;background:#fff;color:var(--green-ink);padding:6px 13px;border-radius:999px;font-weight:700;font-size:11.5px;font-family:inherit;cursor:pointer}
 .main{padding:20px 24px 28px}
-.topbar{display:grid;grid-template-columns:1fr auto;align-items:center;gap:18px;margin-bottom:20px}
-.search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:8px 12px;max-width:380px;width:100%}
-.search input{flex:1;border:0;outline:0;background:transparent;font-family:inherit;font-size:13px;color:var(--ink)}
-.search input::placeholder{color:var(--ink-3)}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:0}
+.topbar-chat{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px 14px;flex:0 1 380px}
+.topbar-chat-label{font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;display:flex;align-items:center;gap:6px}
+.topbar-chat input{flex:1;border:0;outline:0;background:transparent;font-family:inherit;font-size:13px;color:var(--ink)}
+.topbar-chat input::placeholder{color:var(--ink-3)}
 .topbar-right{display:flex;align-items:center;gap:10px}
-.sel{font-size:12.5px;font-weight:600;font-family:inherit;border:1px solid var(--line-2,var(--line));border-radius:10px;padding:7px 10px;background:var(--surface);color:var(--ink);cursor:pointer}
+.btn-limpar{font-family:inherit;font-size:12px;font-weight:600;padding:7px 13px;border-radius:999px;border:1px solid var(--line-2,var(--line));background:var(--surface);color:var(--ink-2);cursor:pointer;white-space:nowrap;transition:background .15s}
+.btn-limpar:hover{background:var(--surface-2)}
+.user-info{display:flex;align-items:center;gap:10px}
+.user-details{text-align:right;line-height:1.3}
+.user-name{font-size:13px;font-weight:700;color:var(--ink)}
+.user-email{font-size:11px;color:var(--ink-3)}
+/* filter bar */
+.filter-bar{display:flex;align-items:center;gap:6px;padding:10px 0;margin-bottom:20px;flex-wrap:wrap}
+.filter-btn{font-family:inherit;font-size:12.5px;font-weight:600;padding:6px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer;transition:background .15s,color .15s,border-color .15s;white-space:nowrap}
+.filter-btn:hover{background:var(--green-soft);color:var(--ink)}
+.filter-btn.on{background:var(--green);color:#fff;border-color:var(--green)}
+.filter-divider{width:1px;height:22px;background:var(--line-2);flex-shrink:0;margin:0 2px}
+.sel{font-size:12.5px;font-weight:600;font-family:inherit;border:1px solid var(--line-2,var(--line));border-radius:999px;padding:6px 12px;background:var(--surface);color:var(--ink-2);cursor:pointer}
 .icon-btn{width:36px;height:36px;background:var(--surface);border:1px solid var(--line);border-radius:10px;display:grid;place-items:center;cursor:pointer;position:relative}
 .dot-r{position:absolute;top:8px;right:9px;width:7px;height:7px;background:var(--rose);border:2px solid var(--surface);border-radius:999px}
 .user-av{width:36px;height:36px;border-radius:999px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:11.5px;background:var(--green-ink)}
@@ -193,19 +206,43 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);c
 </aside>
 <main class="main">
   <div class="topbar">
-    <div class="search">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="var(--ink-3)" stroke-width="1.8"/><path d="M20 20l-3.5-3.5" stroke="var(--ink-3)" stroke-width="1.8" stroke-linecap="round"/></svg>
-      <input placeholder="Buscar função, secretaria, receita…"/>
+    <div class="topbar-chat">
+      <div class="topbar-chat-label">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        Chat IA:
+      </div>
+      <input id="topbarChat" placeholder="Pergunte algo sobre os dados…" onkeydown="if(event.key==='Enter')askAITopbar()"/>
     </div>
     <div class="topbar-right">
-      <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-3)"><div class="ai-pulse"></div>IA ativa</div>
-      {% block topbar_filters %}{% endblock %}
       <div class="theme-toggle">
         <button id="thL" class="on" onclick="setTheme('light')"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
         <button id="thD" onclick="setTheme('dark')"><svg viewBox="0 0 24 24" fill="none"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
       </div>
-      <div class="user-av">PM</div>
+      <button class="btn-limpar" onclick="clearTopbarFilters()">× Limpar filtros</button>
+      <button class="icon-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="var(--ink-3)" stroke-width="1.8"/><path d="M22 6l-10 7L2 6" stroke="var(--ink-3)" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      <button class="icon-btn" style="position:relative">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke="var(--ink-3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="dot-r"></div>
+      </button>
+      <div class="user-info">
+        <div class="user-details">
+          <div class="user-name">Prefeitura Municipal</div>
+          <div class="user-email">orcamento@municipal.gov.br</div>
+        </div>
+        <div class="user-av">PM</div>
+      </div>
     </div>
+  </div>
+  <div class="filter-bar">
+    <button class="filter-btn on" id="fbTudo" onclick="setFilterAno(this,0)">Tudo</button>
+    <button class="filter-btn" id="fb2023" onclick="setFilterAno(this,2023)">2023</button>
+    <button class="filter-btn" id="fb2024" onclick="setFilterAno(this,2024)">2024</button>
+    <button class="filter-btn" id="fb2025" onclick="setFilterAno(this,2025)">2025</button>
+    <button class="filter-btn" id="fb2026" onclick="setFilterAno(this,2026)">2026</button>
+    <div class="filter-divider"></div>
+    {% block topbar_filters %}{% endblock %}
   </div>
   {% block content %}{% endblock %}
 </main>
@@ -233,6 +270,26 @@ async function askAI(){
   btn.disabled=false;document.getElementById('aiInput').value='';
 }
 function fillQ(q){document.getElementById('aiInput').value=q;document.getElementById('aiInput').focus()}
+
+/* topbar helpers */
+function setFilterAno(btn,ano){
+  document.querySelectorAll('.filter-btn[id^="fb"]').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const sel=document.getElementById('anoSel');
+  if(sel){sel.value=ano||2024;if(typeof loadReceita==='function')loadReceita();else if(typeof loadDespesa==='function')loadDespesa();}
+}
+function clearTopbarFilters(){
+  const fbTudo=document.getElementById('fbTudo');if(fbTudo){document.querySelectorAll('.filter-btn[id^="fb"]').forEach(b=>b.classList.remove('on'));fbTudo.classList.add('on');}
+  const mes=document.getElementById('mesSel');if(mes)mes.value=0;
+  const ind=document.getElementById('indSel');if(ind)ind.value='dot_inicial';
+  if(typeof loadReceita==='function')loadReceita();else if(typeof loadDespesa==='function')loadDespesa();
+}
+async function askAITopbar(){
+  const q=document.getElementById('topbarChat').value.trim();if(!q)return;
+  const aiInput=document.getElementById('aiInput');
+  if(aiInput){aiInput.value=q;aiInput.closest('.card')?.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(askAI,300);}
+  document.getElementById('topbarChat').value='';
+}
 </script>
 {% block page_script %}{% endblock %}
 </body>
