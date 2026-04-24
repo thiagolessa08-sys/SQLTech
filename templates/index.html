@@ -565,7 +565,7 @@ async function askAI() {
   try {
     const r = await fetch('/api/chat', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-3-5-sonnet-20241022', max_tokens:1000,
+      body: JSON.stringify({ model:'claude-3-haiku-20240307', max_tokens:1000,
         system: AI_CTX, messages:[{role:'user',content:q}] })
     });
     const d = await r.json();

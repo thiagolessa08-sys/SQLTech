@@ -587,7 +587,7 @@ async function sendMsg(text){
   try {
     // Build messages list (only committed history, not the new user msg yet)
     const payload = {
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-3-haiku-20240307',
       max_tokens: 1200,
       system: buildSystemPrompt(),
       messages: chatHistory
@@ -614,10 +614,11 @@ async function sendMsg(text){
 
     // Detect API error response
     if(!res.ok || data.type === 'error' || data.error) {
-      const errMsg = typeof data.error === 'string'
+      const errType = data.error?.type || '';
+      const errMsg  = typeof data.error === 'string'
         ? data.error
         : data.error?.message || `Erro ${res.status} da API`;
-      appendMsg('ai', `⚠️ ${errMsg}`);
+      appendMsg('ai', `⚠️ [${res.status}${errType?' · '+errType:''}] ${errMsg}`);
       chatHistory.pop(); // remove user msg so history stays clean
       isTyping = false;
       document.getElementById('chatSendBtn').disabled = false;
