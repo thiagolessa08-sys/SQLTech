@@ -17,82 +17,16 @@ html,body{height:100%;font-family:'Plus Jakarta Sans',system-ui,sans-serif;-webk
   min-height:100vh;
 }
 
-/* ── Left panel ── */
+/* ── Right panel (image) ── */
 .login-left{
-  background:linear-gradient(145deg, oklch(0.18 0.12 250) 0%, oklch(0.26 0.18 255) 55%, oklch(0.32 0.20 260) 100%);
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  padding:60px 48px;
   position:relative;
   overflow:hidden;
 }
-.login-left::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  background:
-    radial-gradient(ellipse 70% 50% at 10% 20%, oklch(0.55 0.18 220/.25), transparent 60%),
-    radial-gradient(ellipse 60% 60% at 90% 80%, oklch(0.38 0.20 270/.2), transparent 55%);
-}
-/* decorative circles */
-.login-left::after{
-  content:"";
-  position:absolute;
-  width:480px;height:480px;
-  border-radius:50%;
-  border:1px solid rgba(255,255,255,.06);
-  right:-140px;bottom:-140px;
-}
-.login-left-inner{position:relative;z-index:1;text-align:center;max-width:380px}
-.left-logo{width:180px;height:auto;margin:0 auto 40px;display:block}
-.left-title{
-  font-family:'Instrument Serif',serif;
-  font-size:36px;
-  font-weight:400;
-  color:#fff;
-  letter-spacing:-0.02em;
-  line-height:1.15;
-  margin-bottom:16px;
-}
-.left-title em{font-style:italic;color:oklch(0.80 0.14 200)}
-.left-sub{
-  font-size:15px;
-  color:rgba(255,255,255,.6);
-  line-height:1.65;
-  max-width:300px;
-  margin:0 auto 40px;
-}
-.left-stats{
-  display:grid;
-  grid-template-columns:1fr 1fr 1fr;
-  gap:12px;
+.login-left img{
   width:100%;
-}
-.left-stat{
-  background:rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:16px;
-  padding:16px 10px;
-  text-align:center;
-  backdrop-filter:blur(8px);
-}
-.left-stat b{
+  height:100%;
+  object-fit:cover;
   display:block;
-  font-family:'Instrument Serif',serif;
-  font-size:22px;
-  font-weight:400;
-  color:#fff;
-  letter-spacing:-0.02em;
-  margin-bottom:4px;
-}
-.left-stat span{
-  font-size:10.5px;
-  color:rgba(255,255,255,.55);
-  font-weight:600;
-  text-transform:uppercase;
-  letter-spacing:.06em;
 }
 
 /* ── Right panel ── */
@@ -326,27 +260,9 @@ html,body{height:100%;font-family:'Plus Jakarta Sans',system-ui,sans-serif;-webk
     </div>
   </div>
 
-  <!-- ── Painel direito (azul) ── -->
+  <!-- ── Painel direito (imagem) ── -->
   <div class="login-left">
-    <div class="login-left-inner">
-      <img src="/static/img/logo-dark.png" alt="SQLTech" class="left-logo"/>
-      <h1 class="left-title">Orçamento<br/><em>Municipal</em></h1>
-      <p class="left-sub">Transparência e inteligência na gestão das finanças públicas municipais.</p>
-      <div class="left-stats">
-        <div class="left-stat">
-          <b>3.803</b>
-          <span>Receitas</span>
-        </div>
-        <div class="left-stat">
-          <b>1.202</b>
-          <span>Despesas</span>
-        </div>
-        <div class="left-stat">
-          <b>4 anos</b>
-          <span>Histórico</span>
-        </div>
-      </div>
-    </div>
+    <img src="/static/img/login-bg.jpg" alt="SQLTech"/>
   </div>
 
 </div>
