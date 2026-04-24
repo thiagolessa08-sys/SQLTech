@@ -43,6 +43,17 @@ def login_page():
 
 @app.route("/logout")
 def logout():
+    # Apaga bases temporárias (não-seed) do banco
+    try:
+        con = sqlite3.connect(DB_PATH)
+        temp_bases = con.execute("SELECT name FROM _bases_catalog WHERE is_seed=0").fetchall()
+        for (name,) in temp_bases:
+            con.execute(f"DROP TABLE IF EXISTS base_{name}")
+        con.execute("DELETE FROM _bases_catalog WHERE is_seed=0")
+        con.commit()
+        con.close()
+    except Exception as e:
+        print(f"[logout] Erro ao limpar bases temporárias: {e}")
     session.clear()
     return redirect(url_for("login_page"))
 
@@ -55,6 +66,8 @@ def query(sql, params=()):
     return rows
 
 # ── Bases de Dados ────────────────────────────────────────────────────────
+SEEDS_DIR = os.path.join(os.path.dirname(__file__), "data", "seeds")
+
 def init_catalog():
     con = sqlite3.connect(DB_PATH)
     con.execute('''CREATE TABLE IF NOT EXISTS _bases_catalog (
@@ -63,12 +76,47 @@ def init_catalog():
         filename TEXT,
         rows INTEGER,
         cols TEXT,
-        uploaded_at TEXT
+        uploaded_at TEXT,
+        is_seed INTEGER DEFAULT 0
     )''')
+    # Adiciona coluna is_seed caso o banco já exista sem ela
+    try:
+        con.execute("ALTER TABLE _bases_catalog ADD COLUMN is_seed INTEGER DEFAULT 0")
+    except Exception:
+        pass
+    con.commit()
+    con.close()
+
+def init_seeds():
+    """Importa automaticamente todos os arquivos de data/seeds/ como bases permanentes."""
+    if not os.path.isdir(SEEDS_DIR):
+        return
+    con = sqlite3.connect(DB_PATH)
+    for filename in os.listdir(SEEDS_DIR):
+        ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+        if ext not in ("csv", "xlsx", "xls"):
+            continue
+        name = re.sub(r"[^a-z0-9]", "_", filename.rsplit(".", 1)[0].lower())[:40]
+        # Só importa se ainda não existir como seed
+        existing = con.execute("SELECT name FROM _bases_catalog WHERE name=? AND is_seed=1", (name,)).fetchone()
+        if existing:
+            continue
+        filepath = os.path.join(SEEDS_DIR, filename)
+        try:
+            df = pd.read_csv(filepath, encoding="utf-8", sep=None, engine="python") if ext == "csv" else pd.read_excel(filepath)
+            df.to_sql(f"base_{name}", con, if_exists="replace", index=False)
+            label = filename.rsplit(".", 1)[0].replace("_", " ").title()
+            cols_info = json.dumps([{"col": c, "type": str(df[c].dtype)} for c in df.columns])
+            con.execute("INSERT OR REPLACE INTO _bases_catalog VALUES (?,?,?,?,?,?,1)",
+                (name, label, filename, len(df), cols_info, datetime.now().strftime("%Y-%m-%d %H:%M")))
+            print(f"[seeds] Importado: {filename} ({len(df)} linhas)")
+        except Exception as e:
+            print(f"[seeds] Erro ao importar {filename}: {e}")
     con.commit()
     con.close()
 
 init_catalog()
+init_seeds()
 
 @app.route("/api/bases")
 @login_required
