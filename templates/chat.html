@@ -663,22 +663,52 @@ function hideTyping(){
 
 // ── Build system prompt with DB context ─────────────────────────────────
 function buildSystemPrompt(){
-  let ctx = 'Você é analista de finanças públicas municipais especializado nesta prefeitura.';
+  let ctx = 'Você é analista de finanças públicas municipais especializado nesta prefeitura. Você tem acesso aos dados REAIS e COMPLETOS do município, incluindo dados mensais.';
   if(dbContext){
     const c = dbContext;
-    ctx += `\n\nBase de dados REAL disponível:
-- Receita: ${c.receita_registros} registros, anos ${c.anos_receita?.join(', ')}
-  Arrecadado total (todos os anos): ${fmtB(c.receita_total_arrecadado)}
-  Arrecadado 2024: ${fmtB(c.receita_2024)}
-  Orçado total: ${fmtB(c.receita_total_orcado)}
-- Despesa: ${c.despesa_registros} registros, anos ${c.anos_despesa?.join(', ')}
-  Empenhado total (todos os anos): ${fmtB(c.despesa_total_empenhado)}
-  Empenhado 2024: ${fmtB(c.despesa_2024)}
-  Liquidado total: ${fmtB(c.despesa_total_liquidado)}
-  Pago total: ${fmtB(c.despesa_total_pago)}`;
+    ctx += `\n\n=== BASE DE DADOS REAL ===`;
+    ctx += `\nReceita: ${c.receita_registros} registros | anos disponíveis: ${c.anos_receita?.join(', ')}`;
+    ctx += `\nTotal arrecadado (todos os anos): ${fmtB(c.receita_total_arrecadado)} | Orçado: ${fmtB(c.receita_total_orcado)}`;
+
+    // Mensais de receita
+    if(c.receita_mensal){
+      ctx += `\n\nARRECADAÇÃO MENSAL por ano (dados reais disponíveis):`;
+      for(const [ano, meses] of Object.entries(c.receita_mensal)){
+        if(meses && meses.length){
+          ctx += `\n${ano}: ` + meses.map(m=>`${m.nome}=${fmtB(m.total)}`).join(', ');
+        }
+      }
+    }
+
+    // Categoria receita
+    if(c.receita_categoria_2024?.length){
+      ctx += `\n\nReceita por CATEGORIA em 2024:`;
+      c.receita_categoria_2024.forEach(r => ctx += `\n  ${r.categoria}: ${fmtB(r.total)}`);
+    }
+
+    ctx += `\n\nDespesa: ${c.despesa_registros} registros | anos: ${c.anos_despesa?.join(', ')}`;
+    ctx += `\nEmpenhado total: ${fmtB(c.despesa_total_empenhado)} | Liquidado: ${fmtB(c.despesa_total_liquidado)} | Pago: ${fmtB(c.despesa_total_pago)}`;
+
+    // Mensais de despesa
+    if(c.despesa_mensal){
+      ctx += `\n\nDESPESA MENSAL empenhada por ano:`;
+      for(const [ano, meses] of Object.entries(c.despesa_mensal)){
+        if(meses && meses.length){
+          ctx += `\n${ano}: ` + meses.map(m=>`${m.nome}=${fmtB(m.empenhado)}`).join(', ');
+        }
+      }
+    }
+
+    // Secretarias
+    if(c.despesa_secretaria_2024?.length){
+      ctx += `\n\nDespesa por SECRETARIA em 2024 (top 10):`;
+      c.despesa_secretaria_2024.forEach(r => ctx += `\n  ${r.secretaria}: ${fmtB(r.empenhado)}`);
+    }
   }
-  ctx += '\n\nResponda em português, linguagem técnica mas acessível. Máximo 3 parágrafos.';
-  ctx += '\n\nSEMPRE que a resposta envolver comparação de valores, evolução temporal ou distribuição por categoria, inclua UM gráfico ao final da resposta usando EXATAMENTE este formato:\n[CHART]{"type":"bar","title":"Título do gráfico","labels":["Label1","Label2"],"values":[1000000,2000000],"label":"Legenda"}[/CHART]\nRegras do gráfico: type pode ser "bar" (colunas), "horizontalBar" (barras horizontais p/ muitos itens), "line" (tendência temporal) ou "doughnut" (proporções/categorias). values são sempre números puros sem símbolo de moeda. labels são strings curtas. Máximo 10 itens no gráfico.';
+
+  ctx += '\n\n=== INSTRUÇÕES ===';
+  ctx += '\nResponda em português, linguagem técnica mas acessível. Máximo 3 parágrafos. Use os dados reais acima — NUNCA diga que não há dados mensais, pois eles existem.';
+  ctx += '\n\nSEMPRE que a resposta envolver comparação, evolução temporal ou distribuição, inclua UM gráfico ao final usando EXATAMENTE este formato:\n[CHART]{"type":"bar","title":"Título","labels":["Jan","Fev","Mar"],"values":[1000000,2000000,1500000],"label":"Legenda"}[/CHART]\ntype: "bar" (colunas), "horizontalBar" (barras p/ muitos itens), "line" (tendência), "doughnut" (proporções). values = números puros. Máximo 12 itens.';
   return ctx;
 }
 

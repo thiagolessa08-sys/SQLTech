@@ -158,14 +158,28 @@ def chat():
 
 @app.route("/api/chat/context")
 def chat_context():
-    anos_rec = query('SELECT DISTINCT "Número Ano" AS ano FROM receita ORDER BY ano')
+    anos_rec  = query('SELECT DISTINCT "Número Ano" AS ano FROM receita ORDER BY ano')
     anos_desp = query('SELECT DISTINCT "Número Ano" AS ano FROM despesa ORDER BY ano')
     rec_total = query('SELECT SUM("Valor Arrecadação Receita") AS total, SUM("Valor Projeto Receita") AS orcado FROM receita')
-    desp_total = query('SELECT SUM("Valor Mês Empenhado") AS empenhado, SUM("Valor Mês Liquidado") AS liquidado, SUM("Valor Mês Pago") AS pago FROM despesa')
+    desp_total= query('SELECT SUM("Valor Mês Empenhado") AS empenhado, SUM("Valor Mês Liquidado") AS liquidado, SUM("Valor Mês Pago") AS pago FROM despesa')
     rec_count = query('SELECT COUNT(*) AS cnt FROM receita')
-    desp_count = query('SELECT COUNT(*) AS cnt FROM despesa')
-    rec_2024 = query('SELECT SUM("Valor Arrecadação Receita") AS total FROM receita WHERE "Número Ano"=2024')
+    desp_count= query('SELECT COUNT(*) AS cnt FROM despesa')
+    rec_2024  = query('SELECT SUM("Valor Arrecadação Receita") AS total FROM receita WHERE "Número Ano"=2024')
     desp_2024 = query('SELECT SUM("Valor Mês Empenhado") AS empenhado FROM despesa WHERE "Número Ano"=2024')
+    # Dados mensais por ano
+    mensal = {}
+    for ano in [r["ano"] for r in anos_rec]:
+        rows = query(f'SELECT "Número Mês" AS mes, "Descrição Mês" AS nome, SUM("Valor Arrecadação Receita") AS total FROM receita WHERE "Número Ano"={ano} GROUP BY mes, nome ORDER BY mes')
+        mensal[str(ano)] = [{"mes": r["mes"], "nome": r["nome"], "total": r["total"]} for r in rows]
+    # Despesa mensal (empenhado) por ano
+    desp_mensal = {}
+    for ano in [r["ano"] for r in anos_desp]:
+        rows = query(f'SELECT "Número Mês" AS mes, "Descrição Mês" AS nome, SUM("Valor Mês Empenhado") AS empenhado FROM despesa WHERE "Número Ano"={ano} GROUP BY mes, nome ORDER BY mes')
+        desp_mensal[str(ano)] = [{"mes": r["mes"], "nome": r["nome"], "empenhado": r["empenhado"]} for r in rows]
+    # Receita por categoria 2024
+    cat_2024 = query('SELECT "Descrição Categoria Econômica Receita" AS categoria, SUM("Valor Arrecadação Receita") AS total FROM receita WHERE "Número Ano"=2024 GROUP BY categoria ORDER BY total DESC')
+    # Despesa por secretaria 2024
+    sec_2024 = query('SELECT "Descrição Unidade Orçamentária" AS secretaria, SUM("Valor Mês Empenhado") AS empenhado FROM despesa WHERE "Número Ano"=2024 GROUP BY secretaria ORDER BY empenhado DESC NULLS LAST LIMIT 10')
     return jsonify({
         "anos_receita": [r["ano"] for r in anos_rec],
         "anos_despesa": [r["ano"] for r in anos_desp],
@@ -177,7 +191,11 @@ def chat_context():
         "receita_registros": rec_count[0]["cnt"],
         "despesa_registros": desp_count[0]["cnt"],
         "receita_2024": rec_2024[0]["total"],
-        "despesa_2024": desp_2024[0]["empenhado"]
+        "despesa_2024": desp_2024[0]["empenhado"],
+        "receita_mensal": mensal,
+        "despesa_mensal": desp_mensal,
+        "receita_categoria_2024": [{"categoria": r["categoria"], "total": r["total"]} for r in cat_2024],
+        "despesa_secretaria_2024": [{"secretaria": r["secretaria"], "empenhado": r["empenhado"]} for r in sec_2024]
     })
 
 @app.route("/")
