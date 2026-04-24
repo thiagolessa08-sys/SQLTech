@@ -26,7 +26,10 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);c
 .nav a.active{background:var(--green);color:#fff}
 .nav a svg{width:17px;height:17px;flex:0 0 17px}
 .badge{margin-left:auto;background:var(--badge-bg);color:var(--green-ink);font-size:10px;padding:2px 7px;border-radius:999px;font-weight:700}
-.promo{margin-top:auto;background:var(--green-ink);color:#fff;border-radius:16px;padding:14px;position:relative;overflow:hidden}
+.nav-logout{display:flex;align-items:center;gap:10px;padding:10px 11px;border-radius:10px;color:var(--ink-3);text-decoration:none;font-size:13.5px;font-weight:500;transition:background .15s,color .15s;margin-top:auto}
+.nav-logout svg{width:17px;height:17px;flex:0 0 17px}
+.nav-logout:hover{background:oklch(0.95 0.03 25);color:var(--rose)}
+.promo{margin-top:0;background:var(--green-ink);color:#fff;border-radius:16px;padding:14px;position:relative;overflow:hidden}
 .promo::before{content:"";position:absolute;inset:0;background:radial-gradient(80% 60% at 100% 100%,oklch(0.42 0.18 250/.9),transparent 70%)}
 .promo>*{position:relative}
 .promo h4{margin:0 0 3px;font-size:13px;font-weight:700}
@@ -210,6 +213,10 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);c
       </a>
     </nav>
   </div>
+  <a href="/logout" class="nav-logout">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Sair
+  </a>
   <div class="promo">
     <h4>Analise com<br/>inteligência</h4>
     <p>Perguntas em linguagem natural com IA.</p>
