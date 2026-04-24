@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block title %}Despesas — Orçamento Municipal{% endblock %}
 {% block nav_despesa %}active{% endblock %}
 {% block topbar_filters %}
@@ -28,20 +28,13 @@
     <h1 class="page-title">Despesas do <em>Município</em></h1>
     <p class="page-sub">Execução orçamentária da despesa · Atualização: 23/04/26 · Diária</p>
   </div>
-  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px">
-    <div class="actions">
-      <button class="btn btn-primary">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Exportar
-      </button>
-      <button class="btn btn-ghost">Balancete Despesa</button>
-      <button class="btn btn-ghost">Detalhe Despesa</button>
-    </div>
-    <div class="tabs-pill" id="viewTabs">
-      <button class="on" onclick="switchView('funcional',this)">Funcional</button>
-      <button onclick="switchView('detalhamento',this)">Detalhamento</button>
-      <button onclick="switchView('fornecedores',this)">Secretarias</button>
-    </div>
+  <div class="actions">
+    <button class="btn btn-primary">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Exportar
+    </button>
+    <button class="btn btn-ghost">Balancete Despesa</button>
+    <button class="btn btn-ghost">Detalhe Despesa</button>
   </div>
 </div>
 
@@ -74,114 +67,58 @@
   </div>
 </div>
 
-
-<!-- FUNCIONAL VIEW -->
-<div id="view-funcional">
-  <div class="grid" style="margin-bottom:14px">
-    <div class="card c-4 chart-col">
-      <div class="sec-head"><h3>Dot. Inicial por Secretaria</h3></div>
-      <div id="secBars" style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly"></div>
-    </div>
-    <div class="card c-4 chart-col">
-      <div class="sec-head"><h3>Dotação por Categoria</h3><button class="chip-btn">Detalhes</button></div>
-      <div class="donut-wrap2" style="flex:1">
-        <div class="donut2">
-          <svg viewBox="0 0 120 120" id="donutCatSvg">
-            <circle cx="60" cy="60" r="44" fill="none" stroke="var(--bar-track)" stroke-width="16"/>
-          </svg>
-          <div class="center"><div><b id="donutCatVal">—</b><span>dotação</span></div></div>
-        </div>
-        <div class="donut-list" id="donutCatList"></div>
-      </div>
-    </div>
-    <div class="card c-4">
-      <div class="sec-head"><h3>Dot. Inicial por Modalidade</h3></div>
-      <div id="modalTable"></div>
+<!-- CHARTS ROW 1 -->
+<div class="grid" style="margin-bottom:14px">
+  <!-- Dot. por Secretaria (hbars) -->
+  <div class="card c-7 chart-col">
+    <div class="sec-head"><h3>Dot. Inicial por Secretaria</h3></div>
+    <div id="secBars" style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly">
+      <div style="color:var(--ink-3);font-size:12px;padding:8px 0">Carregando…</div>
     </div>
   </div>
-  <div class="grid" style="margin-bottom:14px">
-    <div class="card c-12">
-      <div class="sec-head"><h3>Dotação Inicial por Elemento / SubElemento</h3></div>
-      <div class="tbl-wrap" style="overflow-x:auto">
-        <table class="tbl" id="elemTable">
-          <thead><tr>
-            <th>Elemento de Despesa</th>
-            <th class="r">Dotação Inicial</th>
-            <th class="r">Empenhado</th>
-            <th class="r">% Exec.</th>
-          </tr></thead>
-          <tbody id="elemBody"><tr><td colspan="4" style="text-align:center;color:var(--ink-3);padding:16px">Carregando…</td></tr></tbody>
-        </table>
+  <!-- Dotação por Categoria (donut) -->
+  <div class="card c-5 chart-col">
+    <div class="sec-head"><h3>Dotação por Categoria</h3><button class="chip-btn">Detalhes</button></div>
+    <div class="donut-wrap2" style="flex:1">
+      <div class="donut2">
+        <svg viewBox="0 0 120 120" id="donutCatSvg">
+          <circle cx="60" cy="60" r="44" fill="none" stroke="var(--bar-track)" stroke-width="16"/>
+        </svg>
+        <div class="center"><div><b id="donutCatVal">—</b><span>dotação</span></div></div>
       </div>
+      <div class="donut-list" id="donutCatList"></div>
     </div>
   </div>
 </div>
 
-<!-- DETALHAMENTO VIEW -->
-<div id="view-detalhamento" style="display:none">
-  <div class="grid" style="margin-bottom:14px">
-    <!-- gauge execução -->
-    <div class="card c-4">
-      <div class="sec-head"><h3>Execução Orçamentária</h3></div>
-      <div style="display:grid;place-items:center;padding:8px 0 2px">
-        <div class="gauge">
-          <svg viewBox="0 0 200 115">
-            <path d="M 16 105 A 84 84 0 0 1 184 105" fill="none" stroke="oklch(0.92 0.015 130)" stroke-width="22" stroke-linecap="round"/>
-            <path id="gaugeArc" d="M 16 105 A 84 84 0 0 1 16.1 105" fill="none" stroke="oklch(0.48 0.18 250)" stroke-width="22" stroke-linecap="round"/>
-          </svg>
-          <div class="val"><b id="gaugeVal">—</b><span>empenho / dotação</span></div>
-        </div>
-      </div>
-      <div class="leg">
-        <div><i style="background:var(--green)"></i>Empenhado</div>
-        <div><i style="background:oklch(0.78 0.13 75)"></i>Liquidado</div>
-        <div><i style="background:oklch(0.92 0.012 130)"></i>Pendente</div>
-      </div>
-    </div>
-    <!-- despesa por função -->
-    <div class="card c-8">
-      <div class="sec-head"><h3>Execução por Função</h3></div>
-      <div class="tbl-wrap" style="overflow-x:auto">
-        <table class="tbl" id="funcTable">
-          <thead><tr>
-            <th>Função</th>
-            <th class="r">Empenhado</th>
-            <th class="r">Liquidado</th>
-            <th class="r">Pago</th>
-            <th class="r">% Liq/Emp</th>
-          </tr></thead>
-          <tbody id="funcBody"><tr><td colspan="5" style="text-align:center;color:var(--ink-3);padding:16px">Carregando…</td></tr></tbody>
-        </table>
-      </div>
+<!-- CHARTS ROW 2 -->
+<div class="grid" style="margin-bottom:14px">
+  <!-- Elemento / SubElemento (table) -->
+  <div class="card c-7 chart-col">
+    <div class="sec-head"><h3>Dotação por Elemento de Despesa</h3></div>
+    <div class="tbl-wrap" style="overflow-x:auto">
+      <table class="tbl" id="elemTable">
+        <thead><tr>
+          <th>Elemento de Despesa</th>
+          <th class="r">Dotação Inicial</th>
+          <th class="r">Empenhado</th>
+          <th class="r">% Exec.</th>
+        </tr></thead>
+        <tbody id="elemBody"><tr><td colspan="4" style="text-align:center;color:var(--ink-3);padding:16px">Carregando…</td></tr></tbody>
+      </table>
     </div>
   </div>
-</div>
-
-<!-- SECRETARIAS VIEW -->
-<div id="view-fornecedores" style="display:none">
-  <div class="grid" style="margin-bottom:14px">
-    <div class="card c-12">
-      <div class="sec-head"><h3>Dotação e Execução por Secretaria</h3></div>
-      <div class="tbl-wrap" style="overflow-x:auto">
-        <table class="tbl" id="secTable">
-          <thead><tr>
-            <th>Secretaria</th>
-            <th class="r">Dot. Inicial</th>
-            <th class="r">Dot. Atualizada</th>
-            <th class="r">Empenhado</th>
-            <th class="r">Liquidado</th>
-            <th class="r">Pago</th>
-            <th class="r">% Exec.</th>
-          </tr></thead>
-          <tbody id="secBody"><tr><td colspan="7" style="text-align:center;color:var(--ink-3);padding:16px">Carregando…</td></tr></tbody>
-        </table>
-      </div>
+  <!-- Modalidade (hbars) -->
+  <div class="card c-5 chart-col">
+    <div class="sec-head"><h3>Dot. Inicial por Modalidade</h3></div>
+    <div id="modalBars" style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly">
+      <div style="color:var(--ink-3);font-size:12px;padding:8px 0">Carregando…</div>
     </div>
   </div>
 </div>
 
 <!-- AI -->
-<div class="card ai-card" style="grid-column:span 12">
+<div class="card ai-card c-12" style="grid-column:span 12">
   <h3>✦ Analise as Despesas com IA</h3>
   <div class="ai-row">
     <input class="ai-input" id="aiInput" placeholder="Ex: qual secretaria tem melhor execução? onde há risco de sub-execução?" onkeydown="if(event.key==='Enter')askAI()"/>
@@ -213,7 +150,8 @@
 .donut-list .pct{font-weight:700;font-size:11px;color:#1a3a5c;flex-shrink:0;font-family:'JetBrains Mono',monospace}
 /* chart cards proporcionais */
 .chart-col{display:flex;flex-direction:column}
-/* AI card — igual ao Painel */
+.chart-col .hbar-row{padding:9px 0}
+/* AI card */
 .card.ai-card,.ai-card{background:linear-gradient(135deg,oklch(0.20 0.12 250) 0%,oklch(0.28 0.16 255) 100%)!important;color:#fff!important;border:1px solid oklch(0.32 0.12 250)!important;position:relative;overflow:hidden;box-shadow:0 8px 32px oklch(0.20 0.12 250/.35)!important}
 .ai-card::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 100% 0%,oklch(0.55 0.18 220/.35),transparent 55%),radial-gradient(ellipse 60% 80% at 0% 100%,oklch(0.38 0.20 270/.3),transparent 55%)}
 .ai-card>*{position:relative}
@@ -249,36 +187,21 @@
 
 {% block page_script %}
 <script>
-let secData=[], funcData=[];
-
-function switchView(v, btn){
-  ['funcional','detalhamento','fornecedores'].forEach(id=>{
-    document.getElementById('view-'+id).style.display=id===v?'':'none';
-  });
-  document.querySelectorAll('#viewTabs button').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-}
-
 async function loadDespesa(){
   const ano=+document.getElementById('anoSel').value;
   const mes=+document.getElementById('mesSel').value;
-  const [kpis, cat, modal, elem, sec, func] = await Promise.all([
+  const [kpis, cat, modal, elem, sec] = await Promise.all([
     get(`/api/despesa/kpis?ano=${ano}&mes=${mes}`),
     get(`/api/despesa/categoria?ano=${ano}`),
     get(`/api/despesa/modalidade?ano=${ano}`),
     get(`/api/despesa/elemento?ano=${ano}`),
-    get(`/api/despesa/secretaria?ano=${ano}`),
-    get(`/api/despesa-funcao?ano=${ano}`)
+    get(`/api/despesa/secretaria?ano=${ano}`)
   ]);
-  secData=sec; funcData=func;
   renderKpis(kpis);
   renderDonutCat(cat);
-  renderModalTable(modal);
   renderElemTable(elem);
   renderSecBars(sec);
-  renderSecTable(sec);
-  renderFuncTable(func);
-  renderGauge(kpis);
+  renderModalBars(modal);
 }
 
 function renderKpis(k){
@@ -297,16 +220,18 @@ function renderKpis(k){
 function renderDonutCat(rows){
   const total=rows.reduce((s,r)=>s+(+r.dotacao||0),0)||1;
   const circ=2*Math.PI*44; let off=0;
-  const segs=rows.map((r,i)=>{const frac=(+r.dotacao||0)/total;const dash=frac*circ;const el=`<circle cx="60" cy="60" r="44" fill="none" stroke="${PAL[i]}" stroke-width="16" stroke-dasharray="${dash.toFixed(2)} ${circ.toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}"/>`;off+=dash;return el;});
+  const segs=rows.map((r,i)=>{
+    const frac=(+r.dotacao||0)/total;
+    const dash=frac*circ;
+    const el=`<circle cx="60" cy="60" r="44" fill="none" stroke="${PAL[i]}" stroke-width="16" stroke-dasharray="${dash.toFixed(2)} ${circ.toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}"/>`;
+    off+=dash; return el;
+  });
   document.getElementById('donutCatSvg').innerHTML=`<circle cx="60" cy="60" r="44" fill="none" stroke="var(--bar-track)" stroke-width="16"/>`+segs.join('');
   document.getElementById('donutCatVal').textContent=fmt(total);
-  document.getElementById('donutCatList').innerHTML=rows.map((r,i)=>`<div class="row"><i style="background:${PAL[i]}"></i><span class="lbl">${r.categoria}</span><span class="pct">${((+r.dotacao/total)*100).toFixed(0)}%</span></div>`).join('');
-}
-
-function renderModalTable(rows){
-  document.getElementById('modalTable').innerHTML=`<table class="tbl"><thead><tr><th>Descrição Modalidade</th><th class="r">Métrica</th></tr></thead><tbody>`+
-  rows.filter(r=>r.dotacao).map(r=>`<tr><td class="name">${r.modalidade}</td><td class="r">${fmtM(r.dotacao)}</td></tr>`).join('')+
-  `<tr><td class="name" style="font-weight:700">Total</td><td class="r" style="font-weight:700">${fmtM(rows.reduce((s,r)=>s+(+r.dotacao||0),0))}</td></tr></tbody></table>`;
+  document.getElementById('donutCatList').innerHTML=rows.map((r,i)=>`
+    <div class="row"><i style="background:${PAL[i]}"></i>
+    <span class="lbl">${r.categoria}</span>
+    <span class="pct">${((+r.dotacao/total)*100).toFixed(0)}%</span></div>`).join('');
 }
 
 function renderElemTable(rows){
@@ -319,7 +244,7 @@ function renderElemTable(rows){
 }
 
 function renderSecBars(rows){
-  const top=rows.filter(r=>r.dot_atualizada).slice(0,7);
+  const top=rows.filter(r=>r.dot_atualizada).slice(0,8);
   const maxV=Math.max(...top.map(r=>+r.dot_atualizada||0))||1;
   document.getElementById('secBars').innerHTML=top.map((r,i)=>`
     <div class="hbar-row">
@@ -329,35 +254,15 @@ function renderSecBars(rows){
     </div>`).join('');
 }
 
-function renderSecTable(rows){
-  document.getElementById('secBody').innerHTML=rows.filter(r=>r.dot_atualizada).map(r=>`<tr>
-    <td class="name">${r.secretaria.replace('SECRETARIA MUNICIPAL DE ','Sec. ').replace('SECRETARIA MUNIC DE ','Sec. ').replace('SECRETARIA MUN DE ','Sec. ')}</td>
-    <td class="r">${fmtM(r.dot_inicial)}</td>
-    <td class="r">${fmtM(r.dot_atualizada)}</td>
-    <td class="r">${fmtM(r.empenhado)}</td>
-    <td class="r">${fmtM(r.liquidado)}</td>
-    <td class="r">${fmtM(r.pago)}</td>
-    <td class="r">${r.empenhado&&r.dot_atualizada?((+r.empenhado/+r.dot_atualizada)*100).toFixed(1)+'%':'—'}</td>
-  </tr>`).join('');
-}
-
-function renderFuncTable(rows){
-  document.getElementById('funcBody').innerHTML=rows.filter(r=>r.empenhado).map(r=>`<tr>
-    <td class="name">${r.funcao}</td>
-    <td class="r">${fmtM(r.empenhado)}</td>
-    <td class="r">${r.liquidado?fmtM(r.liquidado):'—'}</td>
-    <td class="r">${r.pago?fmtM(r.pago):'—'}</td>
-    <td class="r">${r.liquidado&&r.empenhado?((+r.liquidado/+r.empenhado)*100).toFixed(1)+'%':'—'}</td>
-  </tr>`).join('');
-}
-
-function renderGauge(k){
-  const ratio=k.empenhado&&k.dot_atualizada?Math.min(+k.empenhado/+k.dot_atualizada,1):0;
-  document.getElementById('gaugeVal').textContent=(ratio*100).toFixed(0)+'%';
-  const ang=Math.PI*(1-ratio);
-  const ex=100+84*Math.cos(Math.PI-ang), ey=105-84*Math.sin(Math.PI-ang);
-  document.getElementById('gaugeArc').setAttribute('d',
-    ratio>0.01?`M 16 105 A 84 84 0 ${ratio>0.5?1:0} 1 ${ex.toFixed(1)} ${ey.toFixed(1)}`:'M 16 105 A 84 84 0 0 1 16.1 105');
+function renderModalBars(rows){
+  const valid=rows.filter(r=>+r.dotacao>0);
+  const maxV=Math.max(...valid.map(r=>+r.dotacao||0))||1;
+  document.getElementById('modalBars').innerHTML=valid.map((r,i)=>`
+    <div class="hbar-row">
+      <div class="hname">${r.modalidade}</div>
+      <div class="hbar"><i style="width:${((+r.dotacao/maxV)*100).toFixed(1)}%;background:${PAL[i]||PAL[0]}"></i></div>
+      <div class="hval">${fmtM(r.dotacao)}</div>
+    </div>`).join('');
 }
 
 loadDespesa();
