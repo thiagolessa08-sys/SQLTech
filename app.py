@@ -1,8 +1,48 @@
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, session, redirect, url_for
+from functools import wraps
 import sqlite3, os, requests
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "sqltech-orcamento-2026-xK9m")
 DB_PATH = os.path.join(os.path.dirname(__file__), "data", "municipal.db")
+
+# ── Credenciais ──────────────────────────────────────────────────────────
+USERS = {
+    "marcio.amorim@sqltech.com.br": {
+        "password": "Sqltech123",
+        "name": "Márcio Amorim"
+    }
+}
+
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get("logged_in"):
+            return redirect(url_for("login_page"))
+        return f(*args, **kwargs)
+    return decorated
+
+@app.route("/login", methods=["GET", "POST"])
+def login_page():
+    if session.get("logged_in"):
+        return redirect(url_for("index"))
+    error = None
+    if request.method == "POST":
+        email    = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        user = USERS.get(email)
+        if user and user["password"] == password:
+            session["logged_in"]  = True
+            session["user_email"] = email
+            session["user_name"]  = user["name"]
+            return redirect(url_for("index"))
+        error = "E-mail ou senha incorretos."
+    return render_template("login.html", error=error)
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login_page"))
 
 def query(sql, params=()):
     con = sqlite3.connect(DB_PATH)
@@ -141,18 +181,22 @@ def chat_context():
     })
 
 @app.route("/")
+@login_required
 def index():
     return render_template("index.html")
 
 @app.route("/receita")
+@login_required
 def receita_page():
     return render_template("receita.html")
 
 @app.route("/despesa")
+@login_required
 def despesa_page():
     return render_template("despesa.html")
 
 @app.route("/chat")
+@login_required
 def chat_page():
     return render_template("chat.html")
 

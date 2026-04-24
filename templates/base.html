@@ -54,7 +54,8 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);c
 .sel{font-size:12.5px;font-weight:600;font-family:inherit;border:1px solid var(--line-2,var(--line));border-radius:999px;padding:6px 12px;background:var(--surface);color:var(--ink-2);cursor:pointer}
 .icon-btn{width:36px;height:36px;background:var(--surface);border:1px solid var(--line);border-radius:10px;display:grid;place-items:center;cursor:pointer;position:relative}
 .dot-r{position:absolute;top:8px;right:9px;width:7px;height:7px;background:var(--rose);border:2px solid var(--surface);border-radius:999px}
-.user-av{width:36px;height:36px;border-radius:999px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:11.5px;background:var(--green-ink)}
+.user-av{width:36px;height:36px;border-radius:999px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:11.5px;background:var(--green-ink);transition:background .15s}
+.user-av:hover{background:var(--rose)}
 .ai-pulse{width:8px;height:8px;border-radius:999px;background:var(--green);animation:pulse 2s infinite}
 .theme-toggle{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px}
 .theme-toggle button{width:28px;height:28px;border:0;background:transparent;border-radius:999px;cursor:pointer;display:grid;place-items:center;color:var(--ink-3);font-family:inherit}
@@ -239,10 +240,14 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);c
       </button>
       <div class="user-info">
         <div class="user-details">
-          <div class="user-name">Prefeitura Municipal</div>
-          <div class="user-email">orcamento@municipal.gov.br</div>
+          <div class="user-name">{{ session.get('user_name','Usuário') }}</div>
+          <div class="user-email">{{ session.get('user_email','') }}</div>
         </div>
-        <div class="user-av">PM</div>
+        <a href="/logout" class="user-av" title="Sair" style="text-decoration:none;cursor:pointer">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" id="avIcon">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
       </div>
     </div>
   </div>
