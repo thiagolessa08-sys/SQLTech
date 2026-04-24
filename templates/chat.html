@@ -356,6 +356,18 @@
 }
 .chat-clear-btn:hover { background: var(--rose); color: #fff; border-color: var(--rose); }
 
+/* ── Chart inside bubble ── */
+.chart-wrap {
+  margin-top: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px 16px 10px;
+  max-width: 500px;
+}
+.chart-wrap canvas { max-height: 240px; }
+.msg.ai { max-width: 88%; }
+
 /* Markdown in AI responses */
 .msg-bubble strong { font-weight: 700; }
 .msg-bubble em { font-style: italic; }
@@ -475,6 +487,7 @@
 {% endblock %}
 
 {% block page_script %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 // ── State ──────────────────────────────────────────────────────────────
 let chatHistory = [];   // [{role:'user'|'assistant', content:'...'}]
@@ -503,6 +516,92 @@ function renderMarkdown(txt){
     .replace(/\n/g,'<br>');
 }
 
+// ── Chart parsing & rendering ───────────────────────────────────────────
+let chartCounter = 0;
+const CHART_PAL = [
+  'oklch(0.42 0.18 250)','oklch(0.56 0.17 250)','oklch(0.67 0.15 250)',
+  'oklch(0.74 0.13 250)','oklch(0.80 0.10 250)','oklch(0.50 0.16 220)',
+  'oklch(0.60 0.17 270)','oklch(0.45 0.18 200)'
+];
+
+function parseMessage(text){
+  const parts=[], re=/\[CHART\]([\s\S]*?)\[\/CHART\]/g;
+  let last=0, m;
+  while((m=re.exec(text))!==null){
+    if(m.index>last) parts.push({type:'text',content:text.slice(last,m.index).trim()});
+    try{ parts.push({type:'chart',data:JSON.parse(m[1].trim())}); }
+    catch(e){ parts.push({type:'text',content:m[0]}); }
+    last=re.lastIndex;
+  }
+  const tail=text.slice(last).trim();
+  if(tail) parts.push({type:'text',content:tail});
+  return parts;
+}
+
+function buildBubbleHTML(text){
+  const parts=parseMessage(text);
+  let html=''; const charts=[];
+  for(const p of parts){
+    if(p.type==='text' && p.content)
+      html+=`<div>${renderMarkdown(p.content)}</div>`;
+    else if(p.type==='chart'){
+      const id=`chart-${++chartCounter}`;
+      html+=`<div class="chart-wrap"><canvas id="${id}"></canvas></div>`;
+      charts.push({id,data:p.data});
+    }
+  }
+  return {html,charts};
+}
+
+function renderChart(id, d){
+  const canvas=document.getElementById(id);
+  if(!canvas||!window.Chart) return;
+  const isHBar = d.type==='horizontalBar';
+  const isDoughnut = d.type==='doughnut';
+  const colors = isDoughnut ? d.labels?.map((_,i)=>CHART_PAL[i%CHART_PAL.length]) : CHART_PAL[0];
+  new Chart(canvas,{
+    type: isDoughnut ? 'doughnut' : 'bar',
+    data:{
+      labels: d.labels||[],
+      datasets:[{
+        label: d.label||'',
+        data: d.values||[],
+        backgroundColor: colors,
+        borderColor: isDoughnut ? colors : CHART_PAL[0],
+        borderRadius: isDoughnut ? 0 : 6,
+        borderWidth: isDoughnut ? 2 : 0,
+      }]
+    },
+    options:{
+      indexAxis: isHBar ? 'y' : 'x',
+      responsive:true,
+      maintainAspectRatio:true,
+      plugins:{
+        legend:{display:isDoughnut,position:'bottom',labels:{font:{size:11},boxWidth:12}},
+        title:{
+          display:!!d.title,text:d.title||'',
+          font:{size:13,weight:'700',family:"'Plus Jakarta Sans',sans-serif"},
+          color:'#1e293b',padding:{bottom:10}
+        },
+        tooltip:{callbacks:{label:(ctx)=>{
+          const v=ctx.raw;
+          if(v>=1e9) return `R$ ${(v/1e9).toFixed(2)} bi`;
+          if(v>=1e6) return `R$ ${(v/1e6).toFixed(1)} M`;
+          return `R$ ${Math.round(v).toLocaleString('pt-BR')}`;
+        }}}
+      },
+      scales: isDoughnut ? {} : {
+        x:{grid:{color:'rgba(0,0,0,.04)'},ticks:{font:{size:11},maxRotation:30}},
+        y:{grid:{color:'rgba(0,0,0,.04)'},ticks:{font:{size:11},callback:(v)=>{
+          if(v>=1e9) return `R$${(v/1e9).toFixed(1)}bi`;
+          if(v>=1e6) return `R$${(v/1e6).toFixed(0)}M`;
+          return v;
+        }}}
+      }
+    }
+  });
+}
+
 // ── Scroll to bottom ────────────────────────────────────────────────────
 function scrollBottom(){
   const area = document.getElementById('chatArea');
@@ -520,9 +619,17 @@ function appendMsg(role, text, typing=false){
   div.id = typing ? 'typingMsg' : '';
 
   const initials = role === 'user' ? 'PM' : 'IA';
-  const bubbleContent = typing
-    ? '<div class="typing"><span></span><span></span><span></span></div>'
-    : renderMarkdown(text);
+  let bubbleContent, pendingCharts = [];
+
+  if(typing){
+    bubbleContent = '<div class="typing"><span></span><span></span><span></span></div>';
+  } else if(role === 'ai'){
+    const parsed = buildBubbleHTML(text);
+    bubbleContent = parsed.html;
+    pendingCharts = parsed.charts;
+  } else {
+    bubbleContent = renderMarkdown(text);
+  }
 
   div.innerHTML = `
     <div class="msg-avatar">${initials}</div>
@@ -533,7 +640,15 @@ function appendMsg(role, text, typing=false){
   `;
 
   area.appendChild(div);
-  scrollBottom();
+
+  if(pendingCharts.length){
+    requestAnimationFrame(()=>{
+      pendingCharts.forEach(c=>renderChart(c.id,c.data));
+      scrollBottom();
+    });
+  } else {
+    scrollBottom();
+  }
   return div;
 }
 
@@ -562,7 +677,8 @@ function buildSystemPrompt(){
   Liquidado total: ${fmtB(c.despesa_total_liquidado)}
   Pago total: ${fmtB(c.despesa_total_pago)}`;
   }
-  ctx += '\n\nResponda em português, com linguagem técnica de finanças públicas mas acessível. Máximo 4 parágrafos. Use os dados reais acima quando possível.';
+  ctx += '\n\nResponda em português, linguagem técnica mas acessível. Máximo 3 parágrafos.';
+  ctx += '\n\nSEMPRE que a resposta envolver comparação de valores, evolução temporal ou distribuição por categoria, inclua UM gráfico ao final da resposta usando EXATAMENTE este formato:\n[CHART]{"type":"bar","title":"Título do gráfico","labels":["Label1","Label2"],"values":[1000000,2000000],"label":"Legenda"}[/CHART]\nRegras do gráfico: type pode ser "bar" (colunas), "horizontalBar" (barras horizontais p/ muitos itens), "line" (tendência temporal) ou "doughnut" (proporções/categorias). values são sempre números puros sem símbolo de moeda. labels são strings curtas. Máximo 10 itens no gráfico.';
   return ctx;
 }
 
@@ -588,7 +704,7 @@ async function sendMsg(text){
     // Build messages list (only committed history, not the new user msg yet)
     const payload = {
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1200,
+      max_tokens: 1800,
       system: buildSystemPrompt(),
       messages: chatHistory
     };
