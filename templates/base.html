@@ -313,12 +313,19 @@ function clearTopbarFilters(){
   const ind=document.getElementById('indSel');if(ind)ind.value='dot_inicial';
   if(typeof loadReceita==='function')loadReceita();else if(typeof loadDespesa==='function')loadDespesa();
 }
-async function askAITopbar(){
-  const q=document.getElementById('topbarChat').value.trim();if(!q)return;
-  document.getElementById('topbarChat').value='';
-  const aiInput=document.getElementById('aiInput');
-  if(aiInput){aiInput.value=q;aiInput.closest('.card')?.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(askAI,300);}
-  else{window.location.href='/chat?q='+encodeURIComponent(q);}
+function askAITopbar(){
+  const inp=document.getElementById('topbarChat');
+  const q=inp.value.trim();if(!q)return;
+  inp.value='';
+  // Se já estiver na página do chat, injeta direto no input e envia
+  const chatInput=document.getElementById('chatInput');
+  if(chatInput && typeof sendMsg==='function'){
+    chatInput.value=q;
+    sendMsg(q);
+    return;
+  }
+  // Qualquer outra página: redireciona para o chat com a pergunta
+  window.location.href='/chat?q='+encodeURIComponent(q);
 }
 </script>
 {% block page_script %}{% endblock %}

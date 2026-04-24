@@ -907,19 +907,15 @@ async function loadContext(){
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────
-loadContext();
+const pendingTopbarQ = new URLSearchParams(window.location.search).get('q');
+if(pendingTopbarQ) history.replaceState(null,'','/chat');
 
-// Check for ?q= param (from topbar redirect)
-(function(){
-  const params = new URLSearchParams(window.location.search);
-  const q = params.get('q');
-  if(q){
-    // Remove from URL without reload
-    history.replaceState(null,'','/chat');
-    // Send after context loads
-    setTimeout(() => sendMsg(q), 600);
+loadContext().then(() => {
+  if(pendingTopbarQ){
+    // Pequeno delay visual para o usuário ver o chat abrir
+    setTimeout(() => sendMsg(pendingTopbarQ), 300);
   }
-})();
+});
 
 document.getElementById('chatInput').focus();
 </script>
