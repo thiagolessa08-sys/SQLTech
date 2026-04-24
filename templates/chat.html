@@ -587,7 +587,7 @@ async function sendMsg(text){
   try {
     // Build messages list (only committed history, not the new user msg yet)
     const payload = {
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-3-5-sonnet-20241022',
       max_tokens: 1200,
       system: buildSystemPrompt(),
       messages: chatHistory
