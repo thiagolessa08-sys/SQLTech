@@ -267,7 +267,7 @@ async function askAI(){
   const btn=document.getElementById('aiBtn');btn.disabled=true;
   const resp=document.getElementById('aiResp');resp.className='ai-resp show';
   resp.innerHTML='<div class="typing"><span></span><span></span><span></span></div>';
-  try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-3-haiku-20240307',max_tokens:1000,system:AI_SYS,messages:[{role:'user',content:q}]})});
+  try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1000,system:AI_SYS,messages:[{role:'user',content:q}]})});
   const d=await r.json();const txt=d.content?.map(b=>b.text||'').join('')||'Sem resposta.';
   resp.innerHTML=txt.replace(/\n\n/g,'<br><br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');}
   catch(e){resp.innerHTML='Erro ao consultar a IA.';}
