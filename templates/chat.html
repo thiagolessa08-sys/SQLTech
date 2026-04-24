@@ -363,9 +363,18 @@
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 16px 16px 10px;
-  max-width: 500px;
+  max-width: 560px;
+  width: 100%;
 }
-.chart-wrap canvas { max-height: 240px; }
+.chart-wrap canvas { max-height: 280px; }
+.chart-wrap.chart-wide { max-width: 680px; }
+.chart-wrap.chart-tall canvas { max-height: 360px; }
+.chart-type-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--ink-3); margin-bottom: 8px;
+}
+.chart-type-badge svg { width: 12px; height: 12px; }
 .msg.ai { max-width: 88%; }
 
 /* Markdown in AI responses */
@@ -518,11 +527,42 @@ function renderMarkdown(txt){
 
 // ── Chart parsing & rendering ───────────────────────────────────────────
 let chartCounter = 0;
+
+// Paleta principal + paletas secundárias para multi-dataset
 const CHART_PAL = [
-  'oklch(0.42 0.18 250)','oklch(0.56 0.17 250)','oklch(0.67 0.15 250)',
-  'oklch(0.74 0.13 250)','oklch(0.80 0.10 250)','oklch(0.50 0.16 220)',
-  'oklch(0.60 0.17 270)','oklch(0.45 0.18 200)'
+  'oklch(0.42 0.18 250)','oklch(0.62 0.17 140)','oklch(0.72 0.14 60)',
+  'oklch(0.60 0.17 310)','oklch(0.56 0.17 25)','oklch(0.50 0.16 200)',
+  'oklch(0.67 0.15 270)','oklch(0.74 0.13 90)'
 ];
+const CHART_PAL_ALPHA = (i, a=0.15) => CHART_PAL[i % CHART_PAL.length].replace(')', ` / ${a})`);
+
+const CHART_TYPE_ICONS = {
+  bar:'<svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="6" width="3" height="9"/><rect x="6" y="3" width="3" height="12"/><rect x="11" y="1" width="3" height="14"/></svg>',
+  horizontalBar:'<svg viewBox="0 0 16 16" fill="currentColor"><rect x="0" y="1" width="9" height="3"/><rect x="0" y="6" width="14" height="3"/><rect x="0" y="11" width="6" height="3"/></svg>',
+  line:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="1,12 5,6 9,9 15,2"/></svg>',
+  area:'<svg viewBox="0 0 16 16" fill="currentColor" opacity=".7"><polygon points="1,14 1,10 5,5 9,8 15,2 15,14"/></svg>',
+  doughnut:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="4"><circle cx="8" cy="8" r="5"/></svg>',
+  pie:'<svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 8 L8 1 A7 7 0 0 1 15 8 Z" opacity=".9"/><path d="M8 8 L15 8 A7 7 0 0 1 1 12 Z" opacity=".6"/><path d="M8 8 L1 12 A7 7 0 0 1 8 1 Z" opacity=".3"/></svg>',
+  multiBar:'<svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="4" width="2.5" height="11"/><rect x="4" y="7" width="2.5" height="8"/><rect x="8" y="2" width="2.5" height="13"/><rect x="11" y="5" width="2.5" height="10"/></svg>',
+  stackedBar:'<svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="8" width="4" height="7"/><rect x="1" y="4" width="4" height="4" opacity=".5"/><rect x="7" y="5" width="4" height="10"/><rect x="7" y="2" width="4" height="3" opacity=".5"/></svg>',
+};
+const CHART_TYPE_LABELS = {
+  bar:'Barras','horizontalBar':'Barras Horizontais',line:'Linha',area:'Área',
+  doughnut:'Rosca',pie:'Pizza',multiBar:'Barras Duplas',stackedBar:'Barras Empilhadas'
+};
+
+function fmtTick(v){
+  if(Math.abs(v)>=1e9) return `R$${(v/1e9).toFixed(1)}bi`;
+  if(Math.abs(v)>=1e6) return `R$${(v/1e6).toFixed(0)}M`;
+  if(Math.abs(v)>=1e3) return `R$${(v/1e3).toFixed(0)}k`;
+  return Number(v).toLocaleString('pt-BR');
+}
+function fmtTooltip(v){
+  if(Math.abs(v)>=1e9) return `R$ ${(v/1e9).toFixed(2)} bi`;
+  if(Math.abs(v)>=1e6) return `R$ ${(v/1e6).toFixed(1)} M`;
+  if(Math.abs(v)>=1e3) return `R$ ${(v/1e3).toFixed(1)} k`;
+  return `R$ ${Number(Math.round(v)).toLocaleString('pt-BR')}`;
+}
 
 function parseMessage(text){
   const parts=[], re=/\[CHART\]([\s\S]*?)\[\/CHART\]/g;
@@ -546,58 +586,158 @@ function buildBubbleHTML(text){
       html+=`<div>${renderMarkdown(p.content)}</div>`;
     else if(p.type==='chart'){
       const id=`chart-${++chartCounter}`;
-      html+=`<div class="chart-wrap"><canvas id="${id}"></canvas></div>`;
-      charts.push({id,data:p.data});
+      const t = p.data.type||'bar';
+      const isWide = ['multiBar','stackedBar','horizontalBar'].includes(t);
+      const isTall = ['horizontalBar'].includes(t) && (p.data.labels||[]).length > 6;
+      const icon = CHART_TYPE_ICONS[t]||CHART_TYPE_ICONS.bar;
+      const lbl = CHART_TYPE_LABELS[t]||t;
+      html+=`<div class="chart-wrap${isWide?' chart-wide':''}${isTall?' chart-tall':''}">
+        <div class="chart-type-badge">${icon} ${lbl}</div>
+        <canvas id="${id}"></canvas>
+      </div>`;
+      charts.push({id, data:p.data});
     }
   }
   return {html,charts};
 }
 
 function renderChart(id, d){
-  const canvas=document.getElementById(id);
-  if(!canvas||!window.Chart) return;
-  const isHBar = d.type==='horizontalBar';
-  const isDoughnut = d.type==='doughnut';
-  const colors = isDoughnut ? d.labels?.map((_,i)=>CHART_PAL[i%CHART_PAL.length]) : CHART_PAL[0];
-  new Chart(canvas,{
-    type: isDoughnut ? 'doughnut' : 'bar',
-    data:{
-      labels: d.labels||[],
-      datasets:[{
-        label: d.label||'',
-        data: d.values||[],
-        backgroundColor: colors,
-        borderColor: isDoughnut ? colors : CHART_PAL[0],
-        borderRadius: isDoughnut ? 0 : 6,
-        borderWidth: isDoughnut ? 2 : 0,
-      }]
-    },
-    options:{
-      indexAxis: isHBar ? 'y' : 'x',
-      responsive:true,
-      maintainAspectRatio:true,
-      plugins:{
-        legend:{display:isDoughnut,position:'bottom',labels:{font:{size:11},boxWidth:12}},
-        title:{
-          display:!!d.title,text:d.title||'',
-          font:{size:13,weight:'700',family:"'Plus Jakarta Sans',sans-serif"},
-          color:'#1e293b',padding:{bottom:10}
-        },
-        tooltip:{callbacks:{label:(ctx)=>{
-          const v=ctx.raw;
-          if(v>=1e9) return `R$ ${(v/1e9).toFixed(2)} bi`;
-          if(v>=1e6) return `R$ ${(v/1e6).toFixed(1)} M`;
-          return `R$ ${Math.round(v).toLocaleString('pt-BR')}`;
-        }}}
-      },
-      scales: isDoughnut ? {} : {
-        x:{grid:{color:'rgba(0,0,0,.04)'},ticks:{font:{size:11},maxRotation:30}},
-        y:{grid:{color:'rgba(0,0,0,.04)'},ticks:{font:{size:11},callback:(v)=>{
-          if(v>=1e9) return `R$${(v/1e9).toFixed(1)}bi`;
-          if(v>=1e6) return `R$${(v/1e6).toFixed(0)}M`;
-          return v;
-        }}}
+  const canvas = document.getElementById(id);
+  if(!canvas || !window.Chart) return;
+
+  const type  = d.type || 'bar';
+  const dark  = document.documentElement.getAttribute('data-theme')==='dark';
+  const ink2  = dark ? 'rgba(255,255,255,.45)' : 'rgba(0,0,0,.40)';
+  const grid  = dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.05)';
+  const titleColor = dark ? '#e2e8f0' : '#1e293b';
+
+  const commonTooltip = { callbacks:{ label:(ctx)=> fmtTooltip(ctx.raw) } };
+  const commonTitle = {
+    display:!!d.title, text:d.title||'',
+    font:{size:13,weight:'700',family:"'Plus Jakarta Sans',sans-serif"},
+    color:titleColor, padding:{bottom:10}
+  };
+  const commonScaleX = { grid:{color:grid}, ticks:{color:ink2, font:{size:11}, maxRotation:35} };
+  const commonScaleY = { grid:{color:grid}, ticks:{color:ink2, font:{size:11}, callback: fmtTick } };
+
+  // ── Rosca / Pizza ──────────────────────────────────────────────────────
+  if(type==='doughnut' || type==='pie'){
+    const colors = (d.labels||[]).map((_,i)=>CHART_PAL[i%CHART_PAL.length]);
+    new Chart(canvas,{
+      type: type==='pie' ? 'pie' : 'doughnut',
+      data:{ labels:d.labels||[], datasets:[{
+        data:d.values||[], backgroundColor:colors,
+        borderColor: dark?'rgba(30,30,30,.6)':'#fff',
+        borderWidth:2, hoverOffset:6
+      }]},
+      options:{ responsive:true, maintainAspectRatio:true,
+        plugins:{ legend:{display:true,position:'bottom',labels:{color:ink2,font:{size:11},boxWidth:13,padding:10}},
+          title:commonTitle, tooltip:commonTooltip }
       }
+    });
+    return;
+  }
+
+  // ── Linha ──────────────────────────────────────────────────────────────
+  if(type==='line'){
+    const datasets = d.datasets
+      ? d.datasets.map((ds,i)=>({
+          label:ds.label||`Série ${i+1}`, data:ds.values||[],
+          borderColor:CHART_PAL[i%CHART_PAL.length], backgroundColor:'transparent',
+          borderWidth:2.5, pointRadius:3, pointHoverRadius:5, tension:0.35
+        }))
+      : [{
+          label:d.label||'', data:d.values||[],
+          borderColor:CHART_PAL[0], backgroundColor:'transparent',
+          borderWidth:2.5, pointRadius:3, pointHoverRadius:5, tension:0.35
+        }];
+    new Chart(canvas,{
+      type:'line', data:{labels:d.labels||[], datasets},
+      options:{ responsive:true, maintainAspectRatio:true,
+        plugins:{ legend:{display:datasets.length>1,position:'bottom',labels:{color:ink2,font:{size:11},boxWidth:13}},
+          title:commonTitle, tooltip:commonTooltip },
+        scales:{ x:commonScaleX, y:commonScaleY }
+      }
+    });
+    return;
+  }
+
+  // ── Área ───────────────────────────────────────────────────────────────
+  if(type==='area'){
+    const datasets = d.datasets
+      ? d.datasets.map((ds,i)=>({
+          label:ds.label||`Série ${i+1}`, data:ds.values||[],
+          borderColor:CHART_PAL[i%CHART_PAL.length],
+          backgroundColor:CHART_PAL_ALPHA(i, 0.18),
+          borderWidth:2.5, pointRadius:3, tension:0.35, fill:true
+        }))
+      : [{
+          label:d.label||'', data:d.values||[],
+          borderColor:CHART_PAL[0], backgroundColor:CHART_PAL_ALPHA(0, 0.18),
+          borderWidth:2.5, pointRadius:3, tension:0.35, fill:true
+        }];
+    new Chart(canvas,{
+      type:'line', data:{labels:d.labels||[], datasets},
+      options:{ responsive:true, maintainAspectRatio:true,
+        plugins:{ legend:{display:datasets.length>1,position:'bottom',labels:{color:ink2,font:{size:11},boxWidth:13}},
+          title:commonTitle, tooltip:commonTooltip },
+        scales:{ x:commonScaleX, y:commonScaleY }
+      }
+    });
+    return;
+  }
+
+  // ── Barras Múltiplas (multiBar) ────────────────────────────────────────
+  if(type==='multiBar'){
+    const datasets = (d.datasets||[]).map((ds,i)=>({
+      label:ds.label||`Série ${i+1}`, data:ds.values||[],
+      backgroundColor:CHART_PAL[i%CHART_PAL.length],
+      borderRadius:5, borderWidth:0
+    }));
+    new Chart(canvas,{
+      type:'bar', data:{labels:d.labels||[], datasets},
+      options:{ responsive:true, maintainAspectRatio:true,
+        plugins:{ legend:{display:true,position:'bottom',labels:{color:ink2,font:{size:11},boxWidth:13}},
+          title:commonTitle, tooltip:commonTooltip },
+        scales:{ x:{...commonScaleX,stacked:false}, y:{...commonScaleY,stacked:false} }
+      }
+    });
+    return;
+  }
+
+  // ── Barras Empilhadas (stackedBar) ─────────────────────────────────────
+  if(type==='stackedBar'){
+    const datasets = (d.datasets||[]).map((ds,i)=>({
+      label:ds.label||`Série ${i+1}`, data:ds.values||[],
+      backgroundColor:CHART_PAL[i%CHART_PAL.length],
+      borderRadius:0, borderWidth:0
+    }));
+    new Chart(canvas,{
+      type:'bar', data:{labels:d.labels||[], datasets},
+      options:{ responsive:true, maintainAspectRatio:true,
+        plugins:{ legend:{display:true,position:'bottom',labels:{color:ink2,font:{size:11},boxWidth:13}},
+          title:commonTitle, tooltip:commonTooltip },
+        scales:{ x:{...commonScaleX,stacked:true}, y:{...commonScaleY,stacked:true} }
+      }
+    });
+    return;
+  }
+
+  // ── Barra simples / Horizontal ─────────────────────────────────────────
+  const isHBar = type==='horizontalBar';
+  new Chart(canvas,{
+    type:'bar',
+    data:{ labels:d.labels||[], datasets:[{
+      label:d.label||'', data:d.values||[],
+      backgroundColor:(d.labels||[]).map((_,i)=>CHART_PAL[i%CHART_PAL.length]),
+      borderRadius:isHBar?4:6, borderWidth:0
+    }]},
+    options:{ indexAxis: isHBar?'y':'x', responsive:true, maintainAspectRatio:true,
+      plugins:{ legend:{display:false}, title:commonTitle, tooltip:commonTooltip },
+      scales: isHBar
+        ? { x:{...commonScaleY, ticks:{...commonScaleY.ticks,callback:fmtTick}},
+            y:{...commonScaleX, ticks:{...commonScaleX.ticks,font:{size:10.5}}} }
+        : { x:commonScaleX, y:commonScaleY }
     }
   });
 }
@@ -768,7 +908,17 @@ function buildSystemPrompt(){
 
   ctx += '\n\n=== INSTRUÇÕES DE RESPOSTA ===';
   ctx += '\nResponda em português, técnico e acessível. Máximo 3 parágrafos. NUNCA diga que não há dados — use a ferramenta para buscar.';
-  ctx += '\n\nSEMPRE que a resposta envolver comparação, evolução ou distribuição, inclua UM gráfico:\n[CHART]{"type":"bar","title":"Título","labels":["A","B"],"values":[100,200],"label":"Legenda"}[/CHART]\ntype: "bar", "horizontalBar", "line", "doughnut". values = números puros. Máx 12 itens.';
+  ctx += '\n\nSEMPRE que a resposta envolver comparação, evolução ou distribuição, inclua UM gráfico usando o protocolo abaixo.';
+  ctx += '\n\n=== TIPOS DE GRÁFICO DISPONÍVEIS ===';
+  ctx += '\n• bar — barras verticais simples (1 série): {"type":"bar","title":"Título","labels":["Jan","Fev"],"values":[100,200],"label":"Arrecadado"}';
+  ctx += '\n• horizontalBar — barras horizontais (bom para ranking/top N): {"type":"horizontalBar","title":"Top Secretarias","labels":["Saúde","Edu"],"values":[500,300],"label":"Empenhado"}';
+  ctx += '\n• line — linha temporal (1 série): {"type":"line","title":"Evolução","labels":["2022","2023","2024"],"values":[1e6,1.2e6,1.5e6],"label":"Arrecadado"}';
+  ctx += '\n• area — área preenchida (1 série, ótimo para tendência): {"type":"area","title":"Tendência","labels":["Jan","Fev","Mar"],"values":[100,150,130],"label":"Valor"}';
+  ctx += '\n• multiBar — barras duplas/múltiplas (2+ séries lado a lado): {"type":"multiBar","title":"Receita vs Despesa","labels":["2022","2023","2024"],"datasets":[{"label":"Receita","values":[1e6,1.2e6,1.5e6]},{"label":"Despesa","values":[0.9e6,1.1e6,1.3e6]}]}';
+  ctx += '\n• stackedBar — barras empilhadas (composição por categoria): {"type":"stackedBar","title":"Despesa por Função","labels":["2023","2024"],"datasets":[{"label":"Saúde","values":[300,350]},{"label":"Educação","values":[200,250]},{"label":"Outros","values":[100,120]}]}';
+  ctx += '\n• doughnut — rosca (proporções/participação): {"type":"doughnut","title":"Participação","labels":["A","B","C"],"values":[45,35,20]}';
+  ctx += '\n• pie — pizza (distribuição): {"type":"pie","title":"Por Categoria","labels":["A","B","C"],"values":[40,35,25]}';
+  ctx += '\n\nRegras: values = números PUROS (sem R$). Máx 12 itens por série. Use multiBar para comparar 2 grandezas no mesmo período. Use stackedBar para mostrar composição. Use line/area para séries temporais. Envolva o JSON entre [CHART] e [/CHART].';
   return ctx;
 }
 
