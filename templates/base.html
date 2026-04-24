@@ -15,6 +15,10 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);c
 .sidebar{background:var(--surface);border-right:1px solid var(--line);padding:22px 18px 18px;display:flex;flex-direction:column;gap:22px;position:sticky;top:0;height:100vh;overflow-y:auto}
 .brand-name{font-size:21px;font-weight:800;letter-spacing:-0.02em;text-align:center;padding:4px 0 8px}
 .brand-name em{font-style:italic;color:var(--green);font-family:'Instrument Serif',serif}
+.logo-light{display:block}
+.logo-dark{display:none}
+[data-theme="dark"] .logo-light{display:none}
+[data-theme="dark"] .logo-dark{display:block}
 .nav-label{font-size:10.5px;letter-spacing:.14em;color:var(--ink-3);font-weight:600;padding:0 10px;text-transform:uppercase;margin-bottom:6px}
 .nav{display:flex;flex-direction:column;gap:2px}
 .nav a{display:flex;align-items:center;gap:10px;padding:10px 11px;border-radius:10px;color:var(--ink-2);text-decoration:none;font-size:13.5px;font-weight:500;transition:background .15s,color .15s}
@@ -172,7 +176,8 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);c
 <div class="app">
 <aside class="sidebar">
   <a href="/" style="display:block;text-align:center;padding:4px 0 8px;text-decoration:none">
-    <img src="/static/img/logo.png" alt="SQLTech" style="width:140px;height:auto;display:block;margin:0 auto"/>
+    <img src="/static/img/logo-light.png" alt="SQLTech" class="logo-light" style="width:140px;height:auto;display:block;margin:0 auto"/>
+    <img src="/static/img/logo-dark.png"  alt="SQLTech" class="logo-dark"  style="width:140px;height:auto;display:none; margin:0 auto"/>
   </a>
   <div>
     <div class="nav-label">Análises</div>
