@@ -224,16 +224,95 @@ def despesa_elemento():
     rows = query(f'SELECT "Descrição Elemento Despesa" AS elemento, SUM("Valor Dotação Inicial") AS dotacao, SUM("Valor Mês Empenhado") AS empenhado FROM despesa WHERE "Número Ano"={ano} GROUP BY elemento ORDER BY dotacao DESC NULLS LAST LIMIT 10')
     return jsonify(rows)
 
+def safe_sql(sql):
+    """Valida e executa SQL apenas SELECT com segurança."""
+    s = sql.strip()
+    s_up = s.upper().lstrip()
+    if not s_up.startswith("SELECT"):
+        raise ValueError("Apenas queries SELECT são permitidas.")
+    blocked = ["DROP","DELETE","UPDATE","INSERT","CREATE","ALTER","ATTACH","DETACH","PRAGMA"]
+    for kw in blocked:
+        if re.search(r'\b' + kw + r'\b', s_up):
+            raise ValueError(f"Operação não permitida: {kw}")
+    # Garante LIMIT
+    if "LIMIT" not in s_up:
+        s = s.rstrip(";") + " LIMIT 100"
+    return query(s)
+
 @app.route("/api/chat", methods=["POST"])
 def chat():
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
     if not api_key:
         return jsonify({"error": "ANTHROPIC_API_KEY não configurada"}), 500
+
     payload = request.json
-    resp = requests.post("https://api.anthropic.com/v1/messages",
-        headers={"Content-Type":"application/json","x-api-key":api_key,"anthropic-version":"2023-06-01"},
-        json=payload, timeout=60)
-    return jsonify(resp.json()), resp.status_code
+    hdrs = {"Content-Type": "application/json", "x-api-key": api_key, "anthropic-version": "2023-06-01"}
+
+    # Ferramenta de consulta SQL
+    query_tool = {
+        "name": "query_database",
+        "description": (
+            "Executa uma query SQL SELECT no banco de dados municipal. "
+            "Use para obter dados precisos, cruzar tabelas com JOIN e calcular agregações. "
+            "Tabelas: receita, despesa, e bases adicionais importadas (prefixo base_). "
+            "Retorna até 100 linhas."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "sql": {"type": "string",
+                        "description": "Query SQL SELECT com LIMIT. Ex: SELECT ... FROM receita JOIN base_x ON ... LIMIT 50"}
+            },
+            "required": ["sql"]
+        }
+    }
+
+    msgs = list(payload.get("messages", []))
+    call = {
+        "model":      payload.get("model", "claude-haiku-4-5-20251001"),
+        "max_tokens": payload.get("max_tokens", 1800),
+        "system":     payload.get("system", ""),
+        "tools":      [query_tool],
+        "messages":   msgs
+    }
+
+    queries_run = []
+
+    for _ in range(6):   # loop agentico — máx 6 iterações
+        resp = requests.post("https://api.anthropic.com/v1/messages",
+                             headers=hdrs, json=call, timeout=90)
+        if resp.status_code != 200:
+            return jsonify(resp.json()), resp.status_code
+
+        data = resp.json()
+        stop  = data.get("stop_reason")
+        content = data.get("content", [])
+
+        if stop == "tool_use":
+            call["messages"].append({"role": "assistant", "content": content})
+            results = []
+            for blk in content:
+                if blk.get("type") == "tool_use" and blk.get("name") == "query_database":
+                    sql = blk.get("input", {}).get("sql", "")
+                    try:
+                        rows = safe_sql(sql)
+                        queries_run.append({"sql": sql, "linhas": len(rows)})
+                        payload_res = json.dumps({"linhas": len(rows), "dados": rows},
+                                                 ensure_ascii=False, default=str)
+                    except Exception as e:
+                        payload_res = json.dumps({"erro": str(e)})
+                    results.append({
+                        "type": "tool_result",
+                        "tool_use_id": blk["id"],
+                        "content": payload_res
+                    })
+            call["messages"].append({"role": "user", "content": results})
+        else:
+            if queries_run:
+                data["queries_executed"] = queries_run
+            return jsonify(data), resp.status_code
+
+    return jsonify(data), 200
 
 @app.route("/api/chat/context")
 def chat_context():
@@ -259,6 +338,13 @@ def chat_context():
     cat_2024 = query('SELECT "Descrição Categoria Econômica Receita" AS categoria, SUM("Valor Arrecadação Receita") AS total FROM receita WHERE "Número Ano"=2024 GROUP BY categoria ORDER BY total DESC')
     # Despesa por secretaria 2024
     sec_2024 = query('SELECT "Descrição Unidade Orçamentária" AS secretaria, SUM("Valor Mês Empenhado") AS empenhado FROM despesa WHERE "Número Ano"=2024 GROUP BY secretaria ORDER BY empenhado DESC NULLS LAST LIMIT 10')
+    # Schemas das tabelas principais
+    try:
+        rec_cols  = [r["name"] for r in query("PRAGMA table_info(receita)")]
+        desp_cols = [r["name"] for r in query("PRAGMA table_info(despesa)")]
+    except Exception:
+        rec_cols, desp_cols = [], []
+
     # Bases de dados adicionais — com amostra + estatísticas
     try:
         bases = query("SELECT name, label, rows, cols FROM _bases_catalog ORDER BY uploaded_at DESC")
@@ -301,7 +387,9 @@ def chat_context():
         "despesa_mensal": desp_mensal,
         "receita_categoria_2024": [{"categoria": r["categoria"], "total": r["total"]} for r in cat_2024],
         "despesa_secretaria_2024": [{"secretaria": r["secretaria"], "empenhado": r["empenhado"]} for r in sec_2024],
-        "bases_adicionais": bases_info
+        "bases_adicionais": bases_info,
+        "schema_receita": rec_cols,
+        "schema_despesa": desp_cols
     })
 
 @app.route("/")

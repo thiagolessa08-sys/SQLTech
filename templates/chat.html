@@ -479,7 +479,7 @@
           </svg>
         </button>
       </div>
-      <div class="chat-hint">Enter para enviar &nbsp;·&nbsp; Os dados são reais: receita 2023–2026, despesa 2024–2026</div>
+      <div class="chat-hint">Enter para enviar &nbsp;·&nbsp; Motor SQL ativo — a IA consulta o banco em tempo real</div>
     </div>
 
   </div><!-- .chat-wrap -->
@@ -741,9 +741,35 @@ function buildSystemPrompt(){
     }
   }
 
-  ctx += '\n\n=== INSTRUÇÕES ===';
-  ctx += '\nResponda em português, linguagem técnica mas acessível. Máximo 3 parágrafos. Use os dados reais acima — NUNCA diga que não há dados, pois eles existem.';
-  ctx += '\n\nSEMPRE que a resposta envolver comparação, evolução temporal ou distribuição, inclua UM gráfico ao final usando EXATAMENTE este formato:\n[CHART]{"type":"bar","title":"Título","labels":["Jan","Fev","Mar"],"values":[1000000,2000000,1500000],"label":"Legenda"}[/CHART]\ntype: "bar" (colunas), "horizontalBar" (barras p/ muitos itens), "line" (tendência), "doughnut" (proporções). values = números puros. Máximo 12 itens.';
+    // Schemas das tabelas principais
+    if(c.schema_receita?.length){
+      ctx += `\n\nSchema tabela RECEITA: ${c.schema_receita.join(' | ')}`;
+    }
+    if(c.schema_despesa?.length){
+      ctx += `\nSchema tabela DESPESA: ${c.schema_despesa.join(' | ')}`;
+    }
+  }
+
+  ctx += '\n\n=== FERRAMENTA DE CONSULTA SQL ===';
+  ctx += '\nVocê tem acesso à ferramenta query_database para executar SQL SELECT diretamente no banco.';
+  ctx += '\nTabelas disponíveis:';
+  ctx += '\n  - receita (arrecadação municipal)';
+  ctx += '\n  - despesa (execução orçamentária)';
+  if(dbContext?.bases_adicionais?.length){
+    dbContext.bases_adicionais.forEach(b => {
+      ctx += `\n  - base_${b.name} (${b.label}) — colunas: ${(b.colunas||[]).join(', ')}`;
+    });
+  }
+  ctx += '\n\nUSE a ferramenta sempre que:';
+  ctx += '\n  • Precisar de totais, médias ou contagens precisas';
+  ctx += '\n  • Cruzar dados entre tabelas (JOIN)';
+  ctx += '\n  • Filtrar por critérios específicos (bairro, secretaria, ano, etc.)';
+  ctx += '\n  • O contexto acima não tiver o dado exato necessário';
+  ctx += '\nNUNCA invente dados — use a ferramenta para buscar. Você pode chamar a ferramenta múltiplas vezes.';
+
+  ctx += '\n\n=== INSTRUÇÕES DE RESPOSTA ===';
+  ctx += '\nResponda em português, técnico e acessível. Máximo 3 parágrafos. NUNCA diga que não há dados — use a ferramenta para buscar.';
+  ctx += '\n\nSEMPRE que a resposta envolver comparação, evolução ou distribuição, inclua UM gráfico:\n[CHART]{"type":"bar","title":"Título","labels":["A","B"],"values":[100,200],"label":"Legenda"}[/CHART]\ntype: "bar", "horizontalBar", "line", "doughnut". values = números puros. Máx 12 itens.';
   return ctx;
 }
 
@@ -813,7 +839,14 @@ async function sendMsg(text){
       appendMsg('ai', '⚠️ A IA retornou uma resposta vazia. Tente novamente.');
       chatHistory.pop();
     } else {
-      appendMsg('ai', reply);
+      // Se rodou queries, adiciona nota de transparência
+      let finalReply = reply;
+      if(data.queries_executed && data.queries_executed.length > 0){
+        const total = data.queries_executed.reduce((s,q) => s + q.linhas, 0);
+        const note = `\n\n<div style="display:inline-flex;align-items:center;gap:6px;font-size:10.5px;color:var(--ink-3);background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:4px 10px;margin-top:8px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><ellipse cx="12" cy="5" rx="9" ry="3" stroke="currentColor" stroke-width="1.8"/><path d="M21 12c0 1.66-4.03 3-9 3S3 13.66 3 12M21 5v14c0 1.66-4.03 3-9 3S3 20.66 3 19V5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>${data.queries_executed.length} consulta(s) SQL · ${total.toLocaleString('pt-BR')} linhas analisadas</div>`;
+        finalReply = reply + note;
+      }
+      appendMsg('ai', finalReply);
       chatHistory.push({role:'assistant', content: reply});
     }
 
