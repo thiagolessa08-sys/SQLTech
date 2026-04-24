@@ -116,6 +116,30 @@ def chat():
         json=payload, timeout=60)
     return jsonify(resp.json()), resp.status_code
 
+@app.route("/api/chat/context")
+def chat_context():
+    anos_rec = query('SELECT DISTINCT "Número Ano" AS ano FROM receita ORDER BY ano')
+    anos_desp = query('SELECT DISTINCT "Número Ano" AS ano FROM despesa ORDER BY ano')
+    rec_total = query('SELECT SUM("Valor Arrecadação Receita") AS total, SUM("Valor Projeto Receita") AS orcado FROM receita')
+    desp_total = query('SELECT SUM("Valor Mês Empenhado") AS empenhado, SUM("Valor Mês Liquidado") AS liquidado, SUM("Valor Mês Pago") AS pago FROM despesa')
+    rec_count = query('SELECT COUNT(*) AS cnt FROM receita')
+    desp_count = query('SELECT COUNT(*) AS cnt FROM despesa')
+    rec_2024 = query('SELECT SUM("Valor Arrecadação Receita") AS total FROM receita WHERE "Número Ano"=2024')
+    desp_2024 = query('SELECT SUM("Valor Mês Empenhado") AS empenhado FROM despesa WHERE "Número Ano"=2024')
+    return jsonify({
+        "anos_receita": [r["ano"] for r in anos_rec],
+        "anos_despesa": [r["ano"] for r in anos_desp],
+        "receita_total_arrecadado": rec_total[0]["total"],
+        "receita_total_orcado": rec_total[0]["orcado"],
+        "despesa_total_empenhado": desp_total[0]["empenhado"],
+        "despesa_total_liquidado": desp_total[0]["liquidado"],
+        "despesa_total_pago": desp_total[0]["pago"],
+        "receita_registros": rec_count[0]["cnt"],
+        "despesa_registros": desp_count[0]["cnt"],
+        "receita_2024": rec_2024[0]["total"],
+        "despesa_2024": desp_2024[0]["empenhado"]
+    })
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -127,6 +151,10 @@ def receita_page():
 @app.route("/despesa")
 def despesa_page():
     return render_template("despesa.html")
+
+@app.route("/chat")
+def chat_page():
+    return render_template("chat.html")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

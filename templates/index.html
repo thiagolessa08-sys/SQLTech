@@ -222,6 +222,10 @@ body { font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:var(--bg
         <svg viewBox="0 0 24 24" fill="none"><path d="M9 11l3 3 8-8M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Despesa <span class="badge">1.202</span>
       </a>
+      <a href="/chat">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        Chat IA
+      </a>
       <a href="#">
         <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         Relatórios
@@ -432,9 +436,10 @@ function clearIndexFilters() {
 
 async function askAITopbarIndex() {
   const q = document.getElementById('topbarChat').value.trim(); if(!q) return;
+  document.getElementById('topbarChat').value = '';
   const aiInput = document.getElementById('aiInput');
   if(aiInput){ aiInput.value=q; document.getElementById('aiResp').className='ai-resp show'; askAI(); }
-  document.getElementById('topbarChat').value = '';
+  else{ window.location.href='/chat?q='+encodeURIComponent(q); }
 }
 
 async function loadAll() {
