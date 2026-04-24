@@ -28,13 +28,20 @@
     <h1 class="page-title">Despesas do <em>Município</em></h1>
     <p class="page-sub">Execução orçamentária da despesa · Atualização: 23/04/26 · Diária</p>
   </div>
-  <div class="actions">
-    <button class="btn btn-primary">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Exportar
-    </button>
-    <button class="btn btn-ghost">Balancete Despesa</button>
-    <button class="btn btn-ghost">Detalhe Despesa</button>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px">
+    <div class="actions">
+      <button class="btn btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Exportar
+      </button>
+      <button class="btn btn-ghost">Balancete Despesa</button>
+      <button class="btn btn-ghost">Detalhe Despesa</button>
+    </div>
+    <div class="tabs-pill" id="viewTabs">
+      <button class="on" onclick="switchView('funcional',this)">Funcional</button>
+      <button onclick="switchView('detalhamento',this)">Detalhamento</button>
+      <button onclick="switchView('fornecedores',this)">Secretarias</button>
+    </div>
   </div>
 </div>
 
@@ -67,12 +74,6 @@
   </div>
 </div>
 
-<!-- VIEW TABS -->
-<div style="background:var(--surface);border-radius:14px 14px 0 0;border:1px solid var(--line);border-bottom:none;padding:0 8px;display:flex;gap:0;margin-bottom:0">
-  <button class="view-tab on" onclick="switchView('funcional',this)">Funcional</button>
-  <button class="view-tab" onclick="switchView('detalhamento',this)">Detalhamento</button>
-  <button class="view-tab" onclick="switchView('fornecedores',this)">Secretarias</button>
-</div>
 
 <!-- FUNCIONAL VIEW -->
 <div id="view-funcional">
@@ -198,9 +199,6 @@
 
 {% block extra_style %}
 <style>
-.view-tab{background:transparent;border:none;border-bottom:3px solid transparent;padding:12px 18px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink-3);cursor:pointer;margin-bottom:-1px;transition:color .15s}
-.view-tab.on{color:var(--green);border-bottom-color:var(--green)}
-.view-tab:hover{color:var(--ink)}
 /* donut — esquerda/direita */
 .donut-wrap2{display:flex!important;flex-direction:row!important;align-items:center!important;gap:18px!important}
 .donut2{position:relative!important;width:150px!important;height:150px!important;flex-shrink:0!important}
@@ -257,7 +255,7 @@ function switchView(v, btn){
   ['funcional','detalhamento','fornecedores'].forEach(id=>{
     document.getElementById('view-'+id).style.display=id===v?'':'none';
   });
-  document.querySelectorAll('.view-tab').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('#viewTabs button').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');
 }
 
