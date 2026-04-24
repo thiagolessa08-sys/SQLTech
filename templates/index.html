@@ -450,12 +450,11 @@ function clearIndexFilters() {
   if(firstBtn) { setIndexAno(firstBtn, +firstBtn.textContent); }
 }
 
-async function askAITopbarIndex() {
-  const q = document.getElementById('topbarChat').value.trim(); if(!q) return;
-  document.getElementById('topbarChat').value = '';
-  const aiInput = document.getElementById('aiInput');
-  if(aiInput){ aiInput.value=q; document.getElementById('aiResp').className='ai-resp show'; askAI(); }
-  else{ window.location.href='/chat?q='+encodeURIComponent(q); }
+function askAITopbarIndex() {
+  const inp = document.getElementById('topbarChat');
+  const q = inp.value.trim(); if(!q) return;
+  inp.value = '';
+  window.location.href = '/chat?q=' + encodeURIComponent(q);
 }
 
 async function loadAll() {
