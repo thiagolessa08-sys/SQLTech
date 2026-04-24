@@ -704,10 +704,45 @@ function buildSystemPrompt(){
       ctx += `\n\nDespesa por SECRETARIA em 2024 (top 10):`;
       c.despesa_secretaria_2024.forEach(r => ctx += `\n  ${r.secretaria}: ${fmtB(r.empenhado)}`);
     }
+
+    // Bases adicionais
+    if(c.bases_adicionais && c.bases_adicionais.length > 0){
+      ctx += `\n\n=== BASES DE DADOS ADICIONAIS (${c.bases_adicionais.length} base(s) importada(s)) ===`;
+      ctx += '\nAlém de receita e despesa, você tem acesso COMPLETO às seguintes bases:';
+      c.bases_adicionais.forEach(b => {
+        ctx += `\n\n--- BASE: "${b.label}" ---`;
+        ctx += `\nTotal de registros: ${(b.registros||0).toLocaleString('pt-BR')}`;
+        ctx += `\nColunas disponíveis: ${(b.colunas||[]).join(', ')}`;
+        if(b.amostra && b.amostra.length > 0){
+          ctx += `\nAmostra de dados (${b.amostra.length} linhas):`;
+          b.amostra.forEach((row, i) => {
+            const entries = Object.entries(row).map(([k,v]) => `${k}: ${v}`).join(' | ');
+            ctx += `\n  [${i+1}] ${entries}`;
+          });
+        }
+        if(b.stats && Object.keys(b.stats).length > 0){
+          ctx += `\nEstatísticas numéricas:`;
+          const grouped = {};
+          Object.entries(b.stats).forEach(([k,v]) => {
+            const [prefix, ...rest] = k.split('__');
+            const col = rest.join('__');
+            if(!grouped[col]) grouped[col] = {};
+            const map = {s:'soma', a:'média', mi:'mínimo', ma:'máximo'};
+            grouped[col][map[prefix]||prefix] = v;
+          });
+          Object.entries(grouped).forEach(([col, s]) => {
+            const parts = Object.entries(s).map(([t,v]) => `${t}=${isNaN(v)?v:Number(v).toLocaleString('pt-BR',{maximumFractionDigits:2})}`).join(', ');
+            ctx += `\n  ${col} → ${parts}`;
+          });
+        }
+        if(b.erro) ctx += `\n  ⚠ Erro ao carregar amostra: ${b.erro}`;
+      });
+      ctx += '\n\nIMPORTANTE: Use TODOS esses dados nas suas respostas. NÃO diga que os dados não estão disponíveis. Você tem acesso a essas bases completas.';
+    }
   }
 
   ctx += '\n\n=== INSTRUÇÕES ===';
-  ctx += '\nResponda em português, linguagem técnica mas acessível. Máximo 3 parágrafos. Use os dados reais acima — NUNCA diga que não há dados mensais, pois eles existem.';
+  ctx += '\nResponda em português, linguagem técnica mas acessível. Máximo 3 parágrafos. Use os dados reais acima — NUNCA diga que não há dados, pois eles existem.';
   ctx += '\n\nSEMPRE que a resposta envolver comparação, evolução temporal ou distribuição, inclua UM gráfico ao final usando EXATAMENTE este formato:\n[CHART]{"type":"bar","title":"Título","labels":["Jan","Fev","Mar"],"values":[1000000,2000000,1500000],"label":"Legenda"}[/CHART]\ntype: "bar" (colunas), "horizontalBar" (barras p/ muitos itens), "line" (tendência), "doughnut" (proporções). values = números puros. Máximo 12 itens.';
   return ctx;
 }
@@ -818,11 +853,22 @@ async function loadContext(){
   try {
     const c = await fetch('/api/chat/context').then(r => r.json());
     dbContext = c;
-    // Update context bar
+    // Update fixed chips
     document.getElementById('ctxRecAnos').textContent = c.anos_receita?.join('–') || '—';
     document.getElementById('ctxDespAnos').textContent = c.anos_despesa?.join('–') || '—';
     document.getElementById('ctxRecTotal').textContent = fmtB(c.receita_total_arrecadado);
     document.getElementById('ctxDespTotal').textContent = fmtB(c.despesa_total_empenhado);
+    // Add chips for uploaded bases
+    const ctxBar = document.getElementById('ctxBar');
+    if(c.bases_adicionais && c.bases_adicionais.length > 0){
+      c.bases_adicionais.forEach(b => {
+        const chip = document.createElement('div');
+        chip.className = 'ctx-chip';
+        chip.title = `${(b.registros||0).toLocaleString('pt-BR')} registros · ${(b.colunas||[]).length} colunas`;
+        chip.innerHTML = `<div class="ctx-dot" style="background:var(--amber)"></div> ${b.label} <b style="color:var(--amber)">${(b.registros||0).toLocaleString('pt-BR')} reg.</b>`;
+        ctxBar.appendChild(chip);
+      });
+    }
   } catch(e) {
     console.warn('Could not load chat context:', e);
   }

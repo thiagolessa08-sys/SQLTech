@@ -259,11 +259,30 @@ def chat_context():
     cat_2024 = query('SELECT "Descrição Categoria Econômica Receita" AS categoria, SUM("Valor Arrecadação Receita") AS total FROM receita WHERE "Número Ano"=2024 GROUP BY categoria ORDER BY total DESC')
     # Despesa por secretaria 2024
     sec_2024 = query('SELECT "Descrição Unidade Orçamentária" AS secretaria, SUM("Valor Mês Empenhado") AS empenhado FROM despesa WHERE "Número Ano"=2024 GROUP BY secretaria ORDER BY empenhado DESC NULLS LAST LIMIT 10')
-    # Bases de dados adicionais
+    # Bases de dados adicionais — com amostra + estatísticas
     try:
         bases = query("SELECT name, label, rows, cols FROM _bases_catalog ORDER BY uploaded_at DESC")
-        bases_info = [{"name": b["name"], "label": b["label"], "registros": b["rows"],
-                       "colunas": [c["col"] for c in json.loads(b["cols"] or "[]")]} for b in bases]
+        bases_info = []
+        for b in bases:
+            cols = json.loads(b["cols"] or "[]")
+            col_names = [c["col"] for c in cols]
+            detail = {"name": b["name"], "label": b["label"],
+                      "registros": b["rows"], "colunas": col_names}
+            try:
+                # Amostra de 15 linhas
+                sample = query(f'SELECT * FROM "base_{b["name"]}" LIMIT 15')
+                detail["amostra"] = sample
+                # Estatísticas de colunas numéricas
+                num_cols = [c["col"] for c in cols if any(t in c["type"].lower()
+                            for t in ["int","float","num","real","double","decimal"])][:6]
+                if num_cols:
+                    parts = [f'SUM("{c}") as "s__{c}", AVG("{c}") as "a__{c}", MIN("{c}") as "mi__{c}", MAX("{c}") as "ma__{c}"'
+                             for c in num_cols]
+                    stats = query(f'SELECT {", ".join(parts)} FROM "base_{b["name"]}"')
+                    detail["stats"] = stats[0] if stats else {}
+            except Exception as ex:
+                detail["erro"] = str(ex)
+            bases_info.append(detail)
     except Exception:
         bases_info = []
     return jsonify({
