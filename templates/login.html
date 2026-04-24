@@ -28,6 +28,38 @@ html,body{height:100%;font-family:'Plus Jakarta Sans',system-ui,sans-serif;-webk
   object-fit:cover;
   display:block;
 }
+.login-left::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(to top, rgba(0,0,20,.75) 0%, rgba(0,0,20,.2) 45%, transparent 70%);
+  pointer-events:none;
+}
+.img-caption{
+  position:absolute;
+  bottom:40px;
+  left:36px;
+  right:36px;
+  z-index:2;
+}
+.img-caption h2{
+  font-family:'Plus Jakarta Sans',sans-serif;
+  font-size:22px;
+  font-weight:800;
+  color:#fff;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  line-height:1.2;
+  margin-bottom:10px;
+  text-shadow:0 2px 12px rgba(0,0,0,.4);
+}
+.img-caption p{
+  font-size:13px;
+  color:rgba(255,255,255,.88);
+  line-height:1.65;
+  max-width:340px;
+  text-shadow:0 1px 6px rgba(0,0,0,.4);
+}
 
 /* ── Right panel ── */
 .login-right{
@@ -263,6 +295,10 @@ html,body{height:100%;font-family:'Plus Jakarta Sans',system-ui,sans-serif;-webk
   <!-- ── Painel direito (imagem) ── -->
   <div class="login-left">
     <img src="/static/img/login-bg.jpg" alt="SQLTech"/>
+    <div class="img-caption">
+      <h2>Transformação Fiscal<br/>do seu Município</h2>
+      <p>O <strong>Analytics Municipal</strong> é mais que uma plataforma; é o motor de transformação que sua gestão precisa.</p>
+    </div>
   </div>
 
 </div>
