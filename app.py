@@ -116,6 +116,39 @@ def chat():
         json=payload, timeout=60)
     return jsonify(resp.json()), resp.status_code
 
+@app.route("/api/debug-ai")
+def debug_ai():
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return jsonify({"erro": "ANTHROPIC_API_KEY não configurada"})
+    # Tenta listar modelos disponíveis
+    try:
+        r_models = requests.get("https://api.anthropic.com/v1/models",
+            headers={"x-api-key": api_key, "anthropic-version": "2023-06-01"},
+            timeout=10)
+        models_data = r_models.json()
+    except Exception as e:
+        models_data = {"exception": str(e)}
+    # Tenta chamada mínima com modelo mais básico
+    try:
+        r_test = requests.post("https://api.anthropic.com/v1/messages",
+            headers={"Content-Type":"application/json","x-api-key":api_key,"anthropic-version":"2023-06-01"},
+            json={"model":"claude-3-haiku-20240307","max_tokens":10,"messages":[{"role":"user","content":"oi"}]},
+            timeout=15)
+        test_data = r_test.json()
+        test_status = r_test.status_code
+    except Exception as e:
+        test_data = {"exception": str(e)}
+        test_status = 0
+    return jsonify({
+        "key_prefix": api_key[:20] + "...",
+        "key_length": len(api_key),
+        "models_status": r_models.status_code if 'r_models' in dir() else 0,
+        "models_response": models_data,
+        "test_status": test_status,
+        "test_response": test_data
+    })
+
 @app.route("/api/chat/context")
 def chat_context():
     anos_rec = query('SELECT DISTINCT "Número Ano" AS ano FROM receita ORDER BY ano')
