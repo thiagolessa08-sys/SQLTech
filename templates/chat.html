@@ -907,11 +907,41 @@ function buildSystemPrompt(){
     ctx += `\n→ Amostra de dados (SEMPRE explore antes de responder):`;
     ctx += `\n  SELECT TOP 5 * FROM ${schema}.nome_tabela`;
 
+    ctx += `\n\n━━━ REGRA DE NEGÓCIO: INADIMPLÊNCIA ━━━`;
+    ctx += `\n⚠ CRÍTICO: ao calcular inadimplência, NUNCA considere como inadimplente um lançamento cujo mês de vencimento ainda não chegou.`;
+    ctx += `\n`;
+    ctx += `\nLógica correta:`;
+    ctx += `\n  • Inadimplente = vencimento já passou E pagamento não foi registrado`;
+    ctx += `\n  • Em aberto não vencido = vencimento ainda não chegou → NÃO é inadimplência`;
+    ctx += `\n  • Pago em atraso = vencimento passou, mas pagamento foi feito depois → adimplente (porém com atraso)`;
+    ctx += `\n`;
+    ctx += `\nSempre filtre comparando mês/data de vencimento com o mês/data atual (GETDATE()):`;
+    ctx += `\n  WHERE data_vencimento < GETDATE()   -- só vencidos`;
+    ctx += `\n  AND (data_pagamento IS NULL OR data_pagamento > data_vencimento)  -- não pagos ou pagos com atraso`;
+    ctx += `\n`;
+    ctx += `\nAo apresentar resultado de inadimplência, SEMPRE informe também:`;
+    ctx += `\n  1. Total de lançamentos vencidos sem pagamento (inadimplentes reais)`;
+    ctx += `\n  2. Total de lançamentos em aberto ainda não vencidos (a vencer)`;
+    ctx += `\n  3. Não some os dois grupos — são naturezas diferentes`;
+    ctx += `\n`;
+    ctx += `\nExemplo de query correta para inadimplência:`;
+    ctx += `\n  SELECT COUNT(*) AS inadimplentes, SUM(valor) AS valor_inadimplente`;
+    ctx += `\n  FROM ${schema}.lancamentos`;
+    ctx += `\n  WHERE data_vencimento < GETDATE()`;
+    ctx += `\n  AND data_pagamento IS NULL`;
+    ctx += `\n`;
+    ctx += `\nExemplo para separar vencidos x a vencer:`;
+    ctx += `\n  SELECT`;
+    ctx += `\n    SUM(CASE WHEN data_vencimento < GETDATE() AND data_pagamento IS NULL THEN 1 ELSE 0 END) AS inadimplentes,`;
+    ctx += `\n    SUM(CASE WHEN data_vencimento >= GETDATE() AND data_pagamento IS NULL THEN 1 ELSE 0 END) AS a_vencer`;
+    ctx += `\n  FROM ${schema}.lancamentos`;
+
     ctx += `\n\n━━━ FLUXO DE TRABALHO ━━━`;
     ctx += `\n1. Se não conhecer as colunas → execute SELECT TOP 5 * para explorar`;
     ctx += `\n2. Verifique o case dos valores com SELECT DISTINCT antes de filtrar`;
     ctx += `\n3. Monte a query definitiva com os valores corretos`;
-    ctx += `\n4. Prefira queries enxutas com TOP N para evitar timeout`;
+    ctx += `\n4. Em análises de inadimplência → sempre separe vencidos x a vencer`;
+    ctx += `\n5. Prefira queries enxutas com TOP N para evitar timeout`;
 
   } else {
     ctx += '\n⚠ Banco Sybase IQ não conectado. Verifique a variável AGENT_URL no ambiente.';
