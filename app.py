@@ -8,6 +8,75 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "sqltech-orcamento-2026-xK9m")
 DB_PATH = os.path.join(os.path.dirname(__file__), "data", "municipal.db")
 
+# ── Sybase IQ Agent ──────────────────────────────────────────────────────
+AGENT_URL     = os.environ.get("AGENT_URL", "").rstrip("/")
+AGENT_API_KEY = os.environ.get("AGENT_API_KEY", "")
+SYBASE_SCHEMA = "pref_aruja_sp"
+
+def _agent_headers():
+    return {"Content-Type": "application/json", "X-API-Key": AGENT_API_KEY}
+
+def sybase_available():
+    return bool(AGENT_URL and AGENT_API_KEY)
+
+def sybase_health():
+    """Retorna dict com status do agente ou erro."""
+    if not sybase_available():
+        return {"ok": False, "erro": "AGENT_URL ou AGENT_API_KEY não configurados"}
+    try:
+        r = requests.get(f"{AGENT_URL}/health", headers=_agent_headers(), timeout=8)
+        return r.json() if r.status_code == 200 else {"ok": False, "erro": f"HTTP {r.status_code}"}
+    except Exception as e:
+        return {"ok": False, "erro": str(e)}
+
+def sybase_tables():
+    """Lista tabelas/views do banco via agent."""
+    if not sybase_available():
+        return []
+    try:
+        r = requests.get(f"{AGENT_URL}/tables", headers=_agent_headers(), timeout=10)
+        return r.json() if r.status_code == 200 else []
+    except Exception:
+        return []
+
+def sybase_schema(table):
+    """Retorna colunas de uma tabela via agent."""
+    if not sybase_available():
+        return []
+    try:
+        r = requests.get(f"{AGENT_URL}/schema/{table}", headers=_agent_headers(), timeout=10)
+        return r.json() if r.status_code == 200 else []
+    except Exception:
+        return []
+
+def sybase_query(sql, limit=500):
+    """Executa SELECT no Sybase via agent. Retorna lista de dicts."""
+    if not sybase_available():
+        raise RuntimeError("Agente Sybase não configurado (AGENT_URL/AGENT_API_KEY ausentes)")
+    try:
+        r = requests.post(
+            f"{AGENT_URL}/query",
+            headers=_agent_headers(),
+            json={"sql": sql, "limit": limit},
+            timeout=60
+        )
+        if r.status_code != 200:
+            raise RuntimeError(f"Agent retornou HTTP {r.status_code}: {r.text[:200]}")
+        data = r.json()
+        # Converte array de arrays → lista de dicts
+        cols = data.get("columns", [])
+        rows = data.get("rows", [])
+        return [dict(zip(cols, row)) for row in rows]
+    except RuntimeError:
+        raise
+    except Exception as e:
+        raise RuntimeError(f"Erro ao consultar Sybase: {e}")
+
+def is_sybase_query(sql):
+    """Detecta se a query é para o Sybase (referencia o schema ou tabela qualificada)."""
+    s = sql.upper()
+    return SYBASE_SCHEMA.upper() in s or re.search(r'\bSYS\b', s) is not None
+
 # ── Credenciais ──────────────────────────────────────────────────────────
 USERS = {
     "marcio.amorim@sqltech.com.br": {
@@ -296,20 +365,31 @@ def chat():
     payload = request.json
     hdrs = {"Content-Type": "application/json", "x-api-key": api_key, "anthropic-version": "2023-06-01"}
 
-    # Ferramenta de consulta SQL
+    # Ferramenta de consulta SQL — suporta SQLite local e Sybase IQ via agent
+    sybase_note = (
+        f" SYBASE IQ (schema {SYBASE_SCHEMA}): prefixe a tabela com '{SYBASE_SCHEMA}.' "
+        f"e use sintaxe Sybase IQ (TOP N em vez de LIMIT). Ex: SELECT TOP 50 * FROM {SYBASE_SCHEMA}.tabela. "
+        if sybase_available() else ""
+    )
     query_tool = {
         "name": "query_database",
         "description": (
-            "Executa uma query SQL SELECT no banco de dados municipal. "
-            "Use para obter dados precisos, cruzar tabelas com JOIN e calcular agregações. "
-            "Tabelas: receita, despesa, e bases adicionais importadas (prefixo base_). "
-            "Retorna até 100 linhas."
-        ),
+            "Executa uma query SQL SELECT em dois bancos: "
+            "SQLite local (tabelas: receita, despesa, base_pagamento, base_lancamento) "
+            f"e{sybase_note} "
+            "O roteamento é automático: se a query contiver '{SYBASE_SCHEMA}.' vai para o Sybase; "
+            "caso contrário vai para o SQLite. Retorna até 100/500 linhas respectivamente."
+        ).replace("'{SYBASE_SCHEMA}.'", f"'{SYBASE_SCHEMA}.'"),
         "input_schema": {
             "type": "object",
             "properties": {
-                "sql": {"type": "string",
-                        "description": "Query SQL SELECT com LIMIT. Ex: SELECT ... FROM receita JOIN base_x ON ... LIMIT 50"}
+                "sql": {
+                    "type": "string",
+                    "description": (
+                        f"Query SELECT. SQLite: SELECT ... FROM receita LIMIT 50. "
+                        f"Sybase: SELECT TOP 50 ... FROM {SYBASE_SCHEMA}.tabela"
+                    )
+                }
             },
             "required": ["sql"]
         }
@@ -343,9 +423,14 @@ def chat():
                 if blk.get("type") == "tool_use" and blk.get("name") == "query_database":
                     sql = blk.get("input", {}).get("sql", "")
                     try:
-                        rows = safe_sql(sql)
-                        queries_run.append({"sql": sql, "linhas": len(rows)})
-                        payload_res = json.dumps({"linhas": len(rows), "dados": rows},
+                        if is_sybase_query(sql):
+                            rows = sybase_query(sql, limit=500)
+                            db_used = "sybase"
+                        else:
+                            rows = safe_sql(sql)
+                            db_used = "sqlite"
+                        queries_run.append({"sql": sql, "linhas": len(rows), "db": db_used})
+                        payload_res = json.dumps({"linhas": len(rows), "dados": rows, "db": db_used},
                                                  ensure_ascii=False, default=str)
                     except Exception as e:
                         payload_res = json.dumps({"erro": str(e)})
@@ -437,8 +522,54 @@ def chat_context():
         "despesa_secretaria_2024": [{"secretaria": r["secretaria"], "empenhado": r["empenhado"]} for r in sec_2024],
         "bases_adicionais": bases_info,
         "schema_receita": rec_cols,
-        "schema_despesa": desp_cols
+        "schema_despesa": desp_cols,
+        "sybase_disponivel": sybase_available(),
+        "sybase_schema": SYBASE_SCHEMA if sybase_available() else None,
+        "sybase_tabelas": _get_sybase_context_tables() if sybase_available() else []
     })
+
+def _get_sybase_context_tables():
+    """Retorna lista resumida de tabelas Sybase para o contexto do chat."""
+    try:
+        tables = sybase_tables()
+        # sybase_tables() pode retornar lista de strings ou dicts
+        if tables and isinstance(tables[0], dict):
+            return [t.get("table_name") or t.get("name") or str(t) for t in tables[:40]]
+        return [str(t) for t in tables[:40]]
+    except Exception:
+        return []
+
+@app.route("/api/sybase/health")
+@login_required
+def api_sybase_health():
+    return jsonify(sybase_health())
+
+@app.route("/api/sybase/tables")
+@login_required
+def api_sybase_tables():
+    if not sybase_available():
+        return jsonify({"error": "Agente Sybase não configurado"}), 503
+    return jsonify(sybase_tables())
+
+@app.route("/api/sybase/schema/<table>")
+@login_required
+def api_sybase_schema(table):
+    if not sybase_available():
+        return jsonify({"error": "Agente Sybase não configurado"}), 503
+    return jsonify(sybase_schema(table))
+
+@app.route("/api/sybase/query", methods=["POST"])
+@login_required
+def api_sybase_query():
+    if not sybase_available():
+        return jsonify({"error": "Agente Sybase não configurado"}), 503
+    sql   = request.json.get("sql", "")
+    limit = request.json.get("limit", 100)
+    try:
+        rows = sybase_query(sql, limit=limit)
+        return jsonify({"linhas": len(rows), "dados": rows})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
 @app.route("/")
 @login_required

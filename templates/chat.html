@@ -890,21 +890,42 @@ function buildSystemPrompt(){
   }
 
   ctx += '\n\n=== FERRAMENTA DE CONSULTA SQL ===';
-  ctx += '\nVocê tem acesso à ferramenta query_database para executar SQL SELECT diretamente no banco.';
-  ctx += '\nTabelas disponíveis:';
-  ctx += '\n  - receita (arrecadação municipal)';
-  ctx += '\n  - despesa (execução orçamentária)';
+  ctx += '\nVocê tem acesso à ferramenta query_database que roteia automaticamente para dois bancos:';
+
+  ctx += '\n\n── BANCO 1: SQLite local (sintaxe SQLite, LIMIT N) ──';
+  ctx += '\n  - receita            → arrecadação municipal';
+  ctx += '\n  - despesa            → execução orçamentária';
   if(dbContext?.bases_adicionais?.length){
     dbContext.bases_adicionais.forEach(b => {
-      ctx += `\n  - base_${b.name} (${b.label}) — colunas: ${(b.colunas||[]).join(', ')}`;
+      ctx += `\n  - base_${b.name}  → ${b.label} — colunas: ${(b.colunas||[]).join(', ')}`;
     });
   }
+  ctx += '\n  Sintaxe: SELECT ... FROM receita LIMIT 50';
+
+  if(dbContext?.sybase_disponivel){
+    const schema = dbContext.sybase_schema || 'pref_aruja_sp';
+    ctx += `\n\n── BANCO 2: Sybase IQ 16 — schema ${schema} (sintaxe Sybase, TOP N) ──`;
+    ctx += `\n  ROTEAMENTO: qualquer query que contenha "${schema}." vai automaticamente para o Sybase.`;
+    ctx += `\n  Sintaxe: SELECT TOP 50 col1, col2 FROM ${schema}.nome_tabela WHERE ...`;
+    ctx += `\n  ⚠ Use TOP N (não LIMIT). Funções: SUM(), AVG(), COUNT(), CAST(), CONVERT(), DATEPART().`;
+    if(dbContext.sybase_tabelas?.length){
+      ctx += `\n  Tabelas disponíveis no schema ${schema}:`;
+      dbContext.sybase_tabelas.forEach(t => { ctx += `\n    • ${schema}.${t}`; });
+    }
+    ctx += `\n\n  Para descobrir colunas de uma tabela Sybase, execute:`;
+    ctx += `\n    SELECT column_name, domain_name FROM sys.syscolumn c JOIN sys.systable t ON c.table_id=t.table_id WHERE t.table_name='nome_tabela'`;
+    ctx += `\n\n  Para listar todas as tabelas do schema:`;
+    ctx += `\n    SELECT table_name FROM sys.systable WHERE user_name(creator)='${schema}' AND table_type IN ('BASE','VIEW') ORDER BY table_name`;
+  } else {
+    ctx += '\n\n  (Banco Sybase IQ não configurado neste ambiente)';
+  }
+
   ctx += '\n\nUSE a ferramenta sempre que:';
   ctx += '\n  • Precisar de totais, médias ou contagens precisas';
-  ctx += '\n  • Cruzar dados entre tabelas (JOIN)';
-  ctx += '\n  • Filtrar por critérios específicos (bairro, secretaria, ano, etc.)';
+  ctx += '\n  • Cruzar dados entre tabelas com JOIN (inclusive entre SQLite e Sybase em consultas separadas)';
+  ctx += '\n  • Filtrar por critérios específicos (bairro, secretaria, ano, CPF, etc.)';
   ctx += '\n  • O contexto acima não tiver o dado exato necessário';
-  ctx += '\nNUNCA invente dados — use a ferramenta para buscar. Você pode chamar a ferramenta múltiplas vezes.';
+  ctx += '\nNUNCA invente dados — use a ferramenta para buscar. Você pode chamar múltiplas vezes.';
 
   ctx += '\n\n=== INSTRUÇÕES DE RESPOSTA ===';
   ctx += '\nResponda em português, técnico e acessível. Máximo 3 parágrafos. NUNCA diga que não há dados — use a ferramenta para buscar.';
@@ -1050,6 +1071,15 @@ async function loadContext(){
         chip.innerHTML = `<div class="ctx-dot" style="background:var(--amber)"></div> ${b.label} <b style="color:var(--amber)">${(b.registros||0).toLocaleString('pt-BR')} reg.</b>`;
         ctxBar.appendChild(chip);
       });
+    }
+    // Chip do Sybase IQ
+    if(c.sybase_disponivel){
+      const syChip = document.createElement('div');
+      syChip.className = 'ctx-chip';
+      const nTables = c.sybase_tabelas?.length || 0;
+      syChip.title = `Sybase IQ 16 — schema ${c.sybase_schema} · ${nTables} tabela(s) disponível(is)`;
+      syChip.innerHTML = `<div class="ctx-dot" style="background:#3b82f6"></div> Sybase IQ <b style="color:#3b82f6">${nTables} tabelas</b>`;
+      ctxBar.appendChild(syChip);
     }
   } catch(e) {
     console.warn('Could not load chat context:', e);
