@@ -365,30 +365,21 @@ def chat():
     payload = request.json
     hdrs = {"Content-Type": "application/json", "x-api-key": api_key, "anthropic-version": "2023-06-01"}
 
-    # Ferramenta de consulta SQL — suporta SQLite local e Sybase IQ via agent
-    sybase_note = (
-        f" SYBASE IQ (schema {SYBASE_SCHEMA}): prefixe a tabela com '{SYBASE_SCHEMA}.' "
-        f"e use sintaxe Sybase IQ (TOP N em vez de LIMIT). Ex: SELECT TOP 50 * FROM {SYBASE_SCHEMA}.tabela. "
-        if sybase_available() else ""
-    )
+    # Ferramenta de consulta SQL — exclusivamente Sybase IQ via agent
     query_tool = {
         "name": "query_database",
         "description": (
-            "Executa uma query SQL SELECT em dois bancos: "
-            "SQLite local (tabelas: receita, despesa, base_pagamento, base_lancamento) "
-            f"e{sybase_note} "
-            "O roteamento é automático: se a query contiver '{SYBASE_SCHEMA}.' vai para o Sybase; "
-            "caso contrário vai para o SQLite. Retorna até 100/500 linhas respectivamente."
-        ).replace("'{SYBASE_SCHEMA}.'", f"'{SYBASE_SCHEMA}.'"),
+            f"Executa uma query SQL SELECT no banco Sybase IQ 16, schema {SYBASE_SCHEMA}. "
+            f"Use sintaxe Sybase IQ: TOP N em vez de LIMIT, funções como DATEPART(), CONVERT(), CAST(). "
+            f"Sempre qualifique as tabelas com o schema: {SYBASE_SCHEMA}.nome_tabela. "
+            f"Retorna até 500 linhas."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "sql": {
                     "type": "string",
-                    "description": (
-                        f"Query SELECT. SQLite: SELECT ... FROM receita LIMIT 50. "
-                        f"Sybase: SELECT TOP 50 ... FROM {SYBASE_SCHEMA}.tabela"
-                    )
+                    "description": f"Query SELECT Sybase IQ. Ex: SELECT TOP 50 col1, col2 FROM {SYBASE_SCHEMA}.tabela WHERE ..."
                 }
             },
             "required": ["sql"]
@@ -423,14 +414,9 @@ def chat():
                 if blk.get("type") == "tool_use" and blk.get("name") == "query_database":
                     sql = blk.get("input", {}).get("sql", "")
                     try:
-                        if is_sybase_query(sql):
-                            rows = sybase_query(sql, limit=500)
-                            db_used = "sybase"
-                        else:
-                            rows = safe_sql(sql)
-                            db_used = "sqlite"
-                        queries_run.append({"sql": sql, "linhas": len(rows), "db": db_used})
-                        payload_res = json.dumps({"linhas": len(rows), "dados": rows, "db": db_used},
+                        rows = sybase_query(sql, limit=500)
+                        queries_run.append({"sql": sql, "linhas": len(rows), "db": "sybase"})
+                        payload_res = json.dumps({"linhas": len(rows), "dados": rows},
                                                  ensure_ascii=False, default=str)
                     except Exception as e:
                         payload_res = json.dumps({"erro": str(e)})
