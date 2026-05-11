@@ -850,29 +850,76 @@ function buildSystemPrompt(){
   ctx += '\n\n=== BANCO DE DADOS: Sybase IQ 16 ===';
   if(dbContext?.sybase_disponivel){
     const schema = dbContext.sybase_schema || 'pref_aruja_sp';
-    ctx += `\nVocê acessa EXCLUSIVAMENTE o banco Sybase IQ 16, schema: ${schema}.`;
-    ctx += `\n\nSINTAXE OBRIGATÓRIA:`;
-    ctx += `\n  • Use TOP N para limitar linhas (NÃO use LIMIT): SELECT TOP 50 * FROM ${schema}.tabela`;
-    ctx += `\n  • Sempre qualifique tabelas com o schema: ${schema}.nome_tabela`;
-    ctx += `\n  • Funções disponíveis: SUM(), AVG(), COUNT(), MAX(), MIN(), CAST(), CONVERT(), DATEPART(), YEAR(), MONTH()`;
-    ctx += `\n  • JOINs entre tabelas do mesmo schema são suportados`;
+    ctx += `\nBanco: Sybase IQ 16 | Schema: ${schema} | Acesso: exclusivo via ferramenta query_database.`;
+
     if(dbContext.sybase_tabelas?.length){
       ctx += `\n\nTABELAS DISPONÍVEIS (${dbContext.sybase_tabelas.length}):`;
       dbContext.sybase_tabelas.forEach(t => { ctx += `\n  • ${schema}.${t}`; });
     }
-    ctx += `\n\nPara ver colunas de uma tabela:`;
-    ctx += `\n  SELECT column_name, domain_name FROM sys.syscolumn c JOIN sys.systable t ON c.table_id=t.table_id WHERE t.table_name='nome_tabela'`;
-    ctx += `\n\nPara listar todas as tabelas:`;
+
+    ctx += `\n\n━━━ SINTAXE OBRIGATÓRIA ━━━`;
+    ctx += `\n✔ Use TOP N para limitar linhas — NUNCA use LIMIT:`;
+    ctx += `\n    SELECT TOP 100 col1, col2 FROM ${schema}.tabela WHERE ...`;
+    ctx += `\n✔ Sempre qualifique tabelas com o schema:`;
+    ctx += `\n    FROM ${schema}.nome_tabela  (NUNCA apenas FROM nome_tabela)`;
+    ctx += `\n✔ Aliases são obrigatórios em subqueries:`;
+    ctx += `\n    SELECT * FROM (SELECT TOP 10 x FROM ${schema}.t) AS sub`;
+
+    ctx += `\n\n━━━ CASE SENSITIVITY — REGRA CRÍTICA ━━━`;
+    ctx += `\n⚠ Sybase IQ é CASE SENSITIVE por padrão em comparações de string.`;
+    ctx += `\n✘ NUNCA use UPPER() ou LOWER() para contornar isso — causa lentidão e resultados incorretos.`;
+    ctx += `\n✘ NUNCA: WHERE UPPER(nome) = 'PREFEITURA'`;
+    ctx += `\n✔ SEMPRE use o valor exato com o case correto:`;
+    ctx += `\n    WHERE nome = 'Prefeitura Municipal'`;
+    ctx += `\n✔ Para buscas parciais, use LIKE com o case exato:`;
+    ctx += `\n    WHERE descricao LIKE '%Saúde%'   -- respeite maiúsculas/acentos`;
+    ctx += `\n✔ Se não souber o case, primeiro explore a coluna:`;
+    ctx += `\n    SELECT DISTINCT coluna FROM ${schema}.tabela ORDER BY coluna`;
+
+    ctx += `\n\n━━━ DATAS E TEMPO ━━━`;
+    ctx += `\n✔ Funções de data: YEAR(col), MONTH(col), DAY(col), DATEPART(yy, col), GETDATE()`;
+    ctx += `\n✔ Filtrar por ano:   WHERE YEAR(data_col) = 2024`;
+    ctx += `\n✔ Filtrar por mês:   WHERE MONTH(data_col) = 3`;
+    ctx += `\n✔ Intervalo de datas: WHERE data_col BETWEEN '2024-01-01' AND '2024-12-31'`;
+    ctx += `\n✔ Formato de data literal: 'YYYY-MM-DD' ou 'YYYY-MM-DD HH:MM:SS'`;
+    ctx += `\n✘ NUNCA use DATE_FORMAT() ou STRFTIME() — são MySQL/SQLite, não existem no Sybase IQ`;
+
+    ctx += `\n\n━━━ FUNÇÕES E AGREGAÇÕES ━━━`;
+    ctx += `\n✔ Agregação: SUM(), AVG(), COUNT(), COUNT(DISTINCT col), MAX(), MIN()`;
+    ctx += `\n✔ Conversão: CAST(col AS INTEGER), CONVERT(NUMERIC(15,2), col)`;
+    ctx += `\n✔ Nulos: ISNULL(col, 0), col IS NULL, col IS NOT NULL, COALESCE(col, 0)`;
+    ctx += `\n✔ Strings: SUBSTRING(col, inicio, tamanho), LTRIM(), RTRIM(), TRIM(), LEN()`;
+    ctx += `\n✔ Concatenação: col1 || ' ' || col2  ou  col1 + ' ' + col2`;
+    ctx += `\n✘ NUNCA use GROUP_CONCAT(), CONCAT() — não existem no Sybase IQ`;
+    ctx += `\n✘ NUNCA use IFNULL() — use ISNULL()`;
+
+    ctx += `\n\n━━━ JOINS E SUBQUERIES ━━━`;
+    ctx += `\n✔ INNER JOIN, LEFT JOIN, RIGHT JOIN são suportados`;
+    ctx += `\n✔ Sempre use aliases nas tabelas: FROM ${schema}.tabela t1 JOIN ${schema}.outra t2 ON t1.id = t2.id`;
+    ctx += `\n✔ EXISTS e IN são suportados`;
+    ctx += `\n✘ NUNCA use FULL OUTER JOIN sem verificar suporte na versão`;
+
+    ctx += `\n\n━━━ DESCOBERTA DE SCHEMA ━━━`;
+    ctx += `\n→ Colunas de uma tabela:`;
+    ctx += `\n  SELECT c.column_name, c.domain_name FROM sys.syscolumn c JOIN sys.systable t ON c.table_id=t.table_id WHERE t.table_name='nome_tabela' ORDER BY c.column_id`;
+    ctx += `\n→ Todas as tabelas do schema:`;
     ctx += `\n  SELECT table_name FROM sys.systable WHERE user_name(creator)='${schema}' AND table_type IN ('BASE','VIEW') ORDER BY table_name`;
+    ctx += `\n→ Amostra de dados (SEMPRE explore antes de responder):`;
+    ctx += `\n  SELECT TOP 5 * FROM ${schema}.nome_tabela`;
+
+    ctx += `\n\n━━━ FLUXO DE TRABALHO ━━━`;
+    ctx += `\n1. Se não conhecer as colunas → execute SELECT TOP 5 * para explorar`;
+    ctx += `\n2. Verifique o case dos valores com SELECT DISTINCT antes de filtrar`;
+    ctx += `\n3. Monte a query definitiva com os valores corretos`;
+    ctx += `\n4. Prefira queries enxutas com TOP N para evitar timeout`;
+
   } else {
     ctx += '\n⚠ Banco Sybase IQ não conectado. Verifique a variável AGENT_URL no ambiente.';
   }
+
   ctx += '\n\n=== FERRAMENTA query_database ===';
-  ctx += '\nUSE SEMPRE que precisar de dados — não invente valores. Você pode chamar múltiplas vezes.';
-  ctx += '\n  • Totais, médias, contagens precisas → use a ferramenta';
-  ctx += '\n  • Filtros específicos (data, código, nome, valor) → use a ferramenta';
-  ctx += '\n  • Rankings e top N → use a ferramenta com ORDER BY';
-  ctx += '\n  • Cruzamento de tabelas → use JOIN dentro da mesma query';
+  ctx += '\nUSE SEMPRE que precisar de dados — nunca invente valores. Pode chamar múltiplas vezes.';
+  ctx += '\nQuando não souber o nome exato de uma tabela ou coluna, explore primeiro com SELECT TOP 5.';
 
   ctx += '\n\n=== INSTRUÇÕES DE RESPOSTA ===';
   ctx += '\nResponda em português, técnico e acessível. Máximo 3 parágrafos. NUNCA diga que não há dados — use a ferramenta para buscar.';

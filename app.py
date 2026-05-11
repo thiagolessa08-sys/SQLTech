@@ -369,9 +369,14 @@ def chat():
     query_tool = {
         "name": "query_database",
         "description": (
-            f"Executa uma query SQL SELECT no banco Sybase IQ 16, schema {SYBASE_SCHEMA}. "
-            f"Use sintaxe Sybase IQ: TOP N em vez de LIMIT, funções como DATEPART(), CONVERT(), CAST(). "
-            f"Sempre qualifique as tabelas com o schema: {SYBASE_SCHEMA}.nome_tabela. "
+            f"Executa SELECT no Sybase IQ 16, schema {SYBASE_SCHEMA}. "
+            f"REGRAS CRÍTICAS: "
+            f"(1) Use TOP N — NUNCA LIMIT. "
+            f"(2) Case sensitive: NUNCA use UPPER()/LOWER(), use o valor exato. "
+            f"(3) Sempre qualifique: {SYBASE_SCHEMA}.tabela. "
+            f"(4) Datas: YEAR(), MONTH(), DATEPART(), formato 'YYYY-MM-DD'. "
+            f"(5) Nulos: ISNULL() não IFNULL(). "
+            f"(6) Se não conhecer as colunas, execute SELECT TOP 5 * primeiro. "
             f"Retorna até 500 linhas."
         ),
         "input_schema": {
@@ -379,7 +384,11 @@ def chat():
             "properties": {
                 "sql": {
                     "type": "string",
-                    "description": f"Query SELECT Sybase IQ. Ex: SELECT TOP 50 col1, col2 FROM {SYBASE_SCHEMA}.tabela WHERE ..."
+                    "description": (
+                        f"Query SELECT Sybase IQ. "
+                        f"✔ SELECT TOP 50 col FROM {SYBASE_SCHEMA}.tabela WHERE col = 'Valor Exato' "
+                        f"✘ NUNCA: LIMIT, UPPER(), LOWER(), GROUP_CONCAT(), IFNULL()"
+                    )
                 }
             },
             "required": ["sql"]
