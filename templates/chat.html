@@ -422,10 +422,6 @@
     <!-- ── Context bar ── -->
     <div class="chat-context-bar" id="ctxBar">
       <span style="font-weight:600;color:var(--ink-2)">Base de dados:</span>
-      <div class="ctx-chip"><div class="ctx-dot"></div> Receita <b id="ctxRecAnos">…</b></div>
-      <div class="ctx-chip"><div class="ctx-dot"></div> Despesa <b id="ctxDespAnos">…</b></div>
-      <div class="ctx-chip">Arrecadado total <b id="ctxRecTotal">…</b></div>
-      <div class="ctx-chip">Empenhado total <b id="ctxDespTotal">…</b></div>
     </div>
 
     <!-- ── Messages ── -->
@@ -1007,31 +1003,19 @@ async function loadContext(){
   try {
     const c = await fetch('/api/chat/context').then(r => r.json());
     dbContext = c;
-    // Update fixed chips
-    document.getElementById('ctxRecAnos').textContent = c.anos_receita?.join('–') || '—';
-    document.getElementById('ctxDespAnos').textContent = c.anos_despesa?.join('–') || '—';
-    document.getElementById('ctxRecTotal').textContent = fmtB(c.receita_total_arrecadado);
-    document.getElementById('ctxDespTotal').textContent = fmtB(c.despesa_total_empenhado);
-    // Add chips for uploaded bases
-    const ctxBar = document.getElementById('ctxBar');
-    if(c.bases_adicionais && c.bases_adicionais.length > 0){
-      c.bases_adicionais.forEach(b => {
-        const chip = document.createElement('div');
-        chip.className = 'ctx-chip';
-        chip.title = `${(b.registros||0).toLocaleString('pt-BR')} registros · ${(b.colunas||[]).length} colunas`;
-        chip.innerHTML = `<div class="ctx-dot" style="background:var(--amber)"></div> ${b.label} <b style="color:var(--amber)">${(b.registros||0).toLocaleString('pt-BR')} reg.</b>`;
-        ctxBar.appendChild(chip);
-      });
-    }
     // Chip do Sybase IQ
+    const ctxBar = document.getElementById('ctxBar');
+    const syChip = document.createElement('div');
+    syChip.className = 'ctx-chip';
     if(c.sybase_disponivel){
-      const syChip = document.createElement('div');
-      syChip.className = 'ctx-chip';
       const nTables = c.sybase_tabelas?.length || 0;
       syChip.title = `Sybase IQ 16 — schema ${c.sybase_schema} · ${nTables} tabela(s) disponível(is)`;
       syChip.innerHTML = `<div class="ctx-dot" style="background:#3b82f6"></div> Sybase IQ <b style="color:#3b82f6">${nTables} tabelas</b>`;
-      ctxBar.appendChild(syChip);
+    } else {
+      syChip.title = 'Sybase IQ não conectado — configure AGENT_URL';
+      syChip.innerHTML = `<div class="ctx-dot" style="background:var(--rose)"></div> Sybase IQ <b style="color:var(--rose)">offline</b>`;
     }
+    ctxBar.appendChild(syChip);
   } catch(e) {
     console.warn('Could not load chat context:', e);
   }
