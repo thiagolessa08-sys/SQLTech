@@ -440,11 +440,12 @@ def chat():
 
     msgs = list(payload.get("messages", []))
     call = {
-        "model":      payload.get("model", "claude-haiku-4-5-20251001"),
-        "max_tokens": payload.get("max_tokens", 1800),
-        "system":     payload.get("system", ""),
-        "tools":      [query_tool],
-        "messages":   msgs
+        "model":       payload.get("model", "claude-haiku-4-5-20251001"),
+        "max_tokens":  payload.get("max_tokens", 1800),
+        "system":      payload.get("system", ""),
+        "tools":       [query_tool],
+        "tool_choice": {"type": "any"},   # força uso de ferramenta na 1ª chamada
+        "messages":    msgs
     }
 
     queries_run = []
@@ -460,6 +461,7 @@ def chat():
         content = data.get("content", [])
 
         if stop == "tool_use":
+            call["tool_choice"] = {"type": "auto"}  # libera a IA para responder após a 1ª query
             call["messages"].append({"role": "assistant", "content": content})
             results = []
             for blk in content:

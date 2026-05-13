@@ -974,6 +974,7 @@ function buildSystemPrompt(){
   }
 
   ctx += '\n\n=== FERRAMENTA query_database ===';
+  ctx += '\n⚡ EXECUTE IMEDIATAMENTE — nunca anuncie o que vai fazer. Não escreva "vou buscar", "agora consulto", "Perfeito! Agora vou...". Chame a ferramenta direto.';
   ctx += '\nUSE SEMPRE que precisar de dados — nunca invente valores. Pode chamar múltiplas vezes.';
   ctx += '\nQuando não souber o nome exato de uma tabela ou coluna, explore primeiro com SELECT TOP 5.';
 
