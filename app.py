@@ -30,12 +30,30 @@ def sybase_health():
         return {"ok": False, "erro": str(e)}
 
 def sybase_tables():
-    """Lista tabelas/views do banco via agent."""
+    """Lista tabelas/views do banco via agent. Retorna lista de strings."""
     if not sybase_available():
         return []
     try:
-        r = requests.get(f"{AGENT_URL}/tables", headers=_agent_headers(), timeout=10)
-        return r.json() if r.status_code == 200 else []
+        r = requests.get(f"{AGENT_URL}/tables", headers=_agent_headers(), timeout=15)
+        if r.status_code != 200:
+            return []
+        data = r.json()
+        # A API pode retornar {"tables": [...]} ou diretamente [...]
+        if isinstance(data, dict):
+            raw = data.get("tables", data.get("data", []))
+        else:
+            raw = data
+        # Normaliza cada item para string limpa
+        result = []
+        for item in raw:
+            if isinstance(item, dict):
+                name = (item.get("table_name") or item.get("name") or
+                        item.get("TABLE_NAME") or str(item)).strip()
+            else:
+                name = str(item).strip()
+            if name:
+                result.append(name)
+        return result
     except Exception:
         return []
 
@@ -549,13 +567,10 @@ def chat_context():
     })
 
 def _get_sybase_context_tables():
-    """Retorna lista resumida de tabelas Sybase para o contexto do chat."""
+    """Retorna lista completa de tabelas Sybase para o contexto do chat."""
     try:
-        tables = sybase_tables()
-        # sybase_tables() pode retornar lista de strings ou dicts
-        if tables and isinstance(tables[0], dict):
-            return [t.get("table_name") or t.get("name") or str(t) for t in tables[:40]]
-        return [str(t) for t in tables[:40]]
+        # sybase_tables() já normaliza para lista de strings
+        return sybase_tables()
     except Exception:
         return []
 

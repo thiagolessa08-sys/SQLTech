@@ -1080,8 +1080,10 @@ async function loadContext(){
   try {
     const c = await fetch('/api/chat/context').then(r => r.json());
     dbContext = c;
-    // Chip do Sybase IQ
+    // Limpa barra completamente antes de reconstruir
     const ctxBar = document.getElementById('ctxBar');
+    ctxBar.innerHTML = '<span style="font-weight:600;color:var(--ink-2)">Base de dados:</span>';
+    // Chip do Sybase IQ
     const syChip = document.createElement('div');
     syChip.className = 'ctx-chip';
     if(c.sybase_disponivel){
