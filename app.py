@@ -563,16 +563,36 @@ def chat_context():
         "schema_despesa": desp_cols,
         "sybase_disponivel": sybase_available(),
         "sybase_schema": SYBASE_SCHEMA if sybase_available() else None,
-        "sybase_tabelas": _get_sybase_context_tables() if sybase_available() else []
+        "sybase_tabelas": _get_sybase_context_tables() if sybase_available() else [],
+        "sybase_iptu_schemas": _get_iptu_schemas() if sybase_available() else {}
     })
 
 def _get_sybase_context_tables():
     """Retorna lista completa de tabelas Sybase para o contexto do chat."""
     try:
-        # sybase_tables() já normaliza para lista de strings
         return sybase_tables()
     except Exception:
         return []
+
+# Tabelas IPTU prioritárias — schema pré-carregado no contexto
+IPTU_PRIORITY_TABLES = ["PREFEITURA_IPTU_LANCADO", "PREFEITURA_IPTU_PAGO"]
+
+def _get_iptu_schemas():
+    """Pré-carrega schema das tabelas IPTU prioritárias."""
+    result = {}
+    for tbl in IPTU_PRIORITY_TABLES:
+        try:
+            cols = sybase_schema(tbl)
+            # sybase_schema retorna lista de dicts ou lista de strings
+            if cols and isinstance(cols, list):
+                if isinstance(cols[0], dict):
+                    col_names = [c.get("column_name") or c.get("name") or str(c) for c in cols]
+                else:
+                    col_names = [str(c) for c in cols]
+                result[tbl] = col_names
+        except Exception:
+            result[tbl] = []
+    return result
 
 @app.route("/api/sybase/health")
 @login_required

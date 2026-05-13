@@ -857,6 +857,29 @@ function buildSystemPrompt(){
       dbContext.sybase_tabelas.forEach(t => { ctx += `\n  • ${schema}.${t}`; });
     }
 
+    // ── Tabelas IPTU — foco principal ──
+    ctx += `\n\n━━━ TABELAS IPTU — FOCO PRINCIPAL ━━━`;
+    ctx += `\n⭐ ${schema}.PREFEITURA_IPTU_LANCADO  — Lançamentos de IPTU (todas as cobranças emitidas pela prefeitura)`;
+    ctx += `\n⭐ ${schema}.PREFEITURA_IPTU_PAGO      — Pagamentos de IPTU (os valores efetivamente recebidos/quitados)`;
+    ctx += `\n`;
+    ctx += `\nRelação entre as tabelas:`;
+    ctx += `\n  • LANCADO  = tudo que foi cobrado (universo de dívida)`;
+    ctx += `\n  • PAGO     = o que foi pago (total ou parcialmente)`;
+    ctx += `\n  • Inadimplência IPTU = registros em LANCADO cujo vencimento já passou e não têm correspondente em PAGO`;
+    ctx += `\n  • A vencer = registros em LANCADO com vencimento futuro — NÃO são inadimplentes`;
+    ctx += `\n`;
+    ctx += `\nPara relacionar as tabelas, busque a chave de ligação explorando primeiro:`;
+    ctx += `\n  SELECT TOP 5 * FROM ${schema}.PREFEITURA_IPTU_LANCADO`;
+    ctx += `\n  SELECT TOP 5 * FROM ${schema}.PREFEITURA_IPTU_PAGO`;
+    // Inclui colunas pré-carregadas se disponíveis
+    const iptuSchemas = dbContext.sybase_iptu_schemas || {};
+    if(iptuSchemas['PREFEITURA_IPTU_LANCADO']?.length){
+      ctx += `\n\nColunas PREFEITURA_IPTU_LANCADO: ${iptuSchemas['PREFEITURA_IPTU_LANCADO'].join(', ')}`;
+    }
+    if(iptuSchemas['PREFEITURA_IPTU_PAGO']?.length){
+      ctx += `\nColunas PREFEITURA_IPTU_PAGO: ${iptuSchemas['PREFEITURA_IPTU_PAGO'].join(', ')}`;
+    }
+
     ctx += `\n\n━━━ SINTAXE OBRIGATÓRIA ━━━`;
     ctx += `\n✔ Use TOP N para limitar linhas — NUNCA use LIMIT:`;
     ctx += `\n    SELECT TOP 100 col1, col2 FROM ${schema}.tabela WHERE ...`;
