@@ -184,8 +184,33 @@ def init_seeds():
     con.commit()
     con.close()
 
+def cleanup_orphan_seeds():
+    """Remove seeds do banco cujo arquivo CSV/Excel não existe mais em data/seeds/."""
+    if not os.path.isdir(SEEDS_DIR):
+        return
+    # Nomes válidos = arquivos que ainda existem na pasta
+    valid_names = set()
+    for filename in os.listdir(SEEDS_DIR):
+        ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+        if ext in ("csv", "xlsx", "xls"):
+            name = re.sub(r"[^a-z0-9]", "_", filename.rsplit(".", 1)[0].lower())[:40]
+            valid_names.add(name)
+    try:
+        con = sqlite3.connect(DB_PATH)
+        orphans = con.execute("SELECT name FROM _bases_catalog WHERE is_seed=1").fetchall()
+        for (name,) in orphans:
+            if name not in valid_names:
+                con.execute(f"DROP TABLE IF EXISTS base_{name}")
+                con.execute("DELETE FROM _bases_catalog WHERE name=?", (name,))
+                print(f"[seeds] Removido seed órfão: {name}")
+        con.commit()
+        con.close()
+    except Exception as e:
+        print(f"[seeds] Erro ao limpar seeds órfãos: {e}")
+
 init_catalog()
 init_seeds()
+cleanup_orphan_seeds()
 
 @app.route("/api/bases")
 @login_required
