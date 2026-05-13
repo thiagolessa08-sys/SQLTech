@@ -799,7 +799,25 @@ function hideTyping(){
 
 // ── Build system prompt with DB context ─────────────────────────────────
 function buildSystemPrompt(){
+  const schema = dbContext?.sybase_schema || 'pref_aruja_sp';
   let ctx = 'Você é analista de finanças públicas municipais especializado nesta prefeitura. Você acessa EXCLUSIVAMENTE o banco Sybase IQ 16 em tempo real via ferramenta query_database.';
+
+  // ── REGRA CRÍTICA NO TOPO — executada antes de qualquer outra lógica ──
+  ctx += `\n\n🚨 REGRA INVIOLÁVEL — NOME / CONTRIBUINTE / CPF / CADASTRO:`;
+  ctx += `\nSempre que a pergunta mencionar nome de pessoa, contribuinte, proprietário, CPF, CNPJ, endereço ou qualquer identificação individual:`;
+  ctx += `\n  1. IGNORE completamente as tabelas receita e despesa — elas NÃO têm dados de contribuintes nominais.`;
+  ctx += `\n  2. Consulte OBRIGATORIAMENTE: ${schema}.PREFEITURA_IPTU_LANCADO e/ou ${schema}.PREFEITURA_IPTU_PAGO`;
+  ctx += `\n  3. NUNCA responda "não há registros" sem antes consultar essas tabelas IPTU.`;
+  ctx += `\n  4. Se não encontrar nas tabelas IPTU, diga: "Não encontrei na base IPTU — pode confirmar o nome exato ou o código do contribuinte?"`;
+  ctx += `\n`;
+  ctx += `\nEXEMPLOS QUE ATIVAM ESSA REGRA (use SEMPRE as tabelas IPTU):`;
+  ctx += `\n  • "Qual o débito do João Silva?"`;
+  ctx += `\n  • "O contribuinte 12345 pagou?"`;
+  ctx += `\n  • "Pesquise Robinson Simões"`;
+  ctx += `\n  • "Quem deve IPTU?"`;
+  ctx += `\n  • "Mostre lançamentos da Maria"`;
+  ctx += `\n  • "Imóvel na Rua das Flores"`;
+
   if(dbContext){
     const c = dbContext;
 
@@ -849,7 +867,6 @@ function buildSystemPrompt(){
 
   ctx += '\n\n=== BANCO DE DADOS: Sybase IQ 16 ===';
   if(dbContext?.sybase_disponivel){
-    const schema = dbContext.sybase_schema || 'pref_aruja_sp';
     ctx += `\nBanco: Sybase IQ 16 | Schema: ${schema} | Acesso: exclusivo via ferramenta query_database.`;
 
     if(dbContext.sybase_tabelas?.length){
