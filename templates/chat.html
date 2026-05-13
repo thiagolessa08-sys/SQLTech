@@ -842,13 +842,58 @@ function buildSystemPrompt(){
   if(dbContext?.sybase_disponivel){
     ctx += `\nBanco: Sybase IQ 16 | Schema: ${schema} | Acesso: exclusivo via ferramenta query_database.`;
 
-    if(dbContext.sybase_tabelas?.length){
-      const n = dbContext.sybase_tabelas.length;
-      ctx += `\n\nO banco possui ${n} tabelas no schema ${schema}.`;
-      ctx += `\nPara descobrir tabelas relevantes, use:`;
-      ctx += `\n  SELECT table_name FROM sys.systable WHERE user_name(creator)='${schema}' AND table_name LIKE '%PALAVRA%' ORDER BY table_name`;
-      ctx += `\nPara listar todas: SELECT table_name FROM sys.systable WHERE user_name(creator)='${schema}' ORDER BY table_name`;
-    }
+    // Mapeamento semântico curado — use estas tabelas para cada conceito
+    ctx += `\n\n━━━ TABELAS AUTORIZADAS E SEU USO ━━━`;
+    ctx += `\n\n📊 FATOS (dados numéricos / transações):`;
+    ctx += `\n  ${schema}.FATO_BIORC_MENSAL_INTERVENCAO_DOTACAO`;
+    ctx += `\n    → Despesas, Empenho, Liquidação, Pagamento mensal`;
+    ctx += `\n  ${schema}.FATO_BIORC_ALTERACAO_ORCAMENTARIA_DESPESA`;
+    ctx += `\n    → Suplementação, Redução Orçamentária, alterações de dotação`;
+    ctx += `\n  ${schema}.FATO_BIORC_EXECUCAO_RECEITA`;
+    ctx += `\n    → Receita arrecadada, arrecadação por categoria/fonte`;
+    ctx += `\n  ${schema}.FATO_BIORC_ELABORACAO_ORCAMENTO`;
+    ctx += `\n    → Orçamento previsto, LOA (Lei Orçamentária Anual)`;
+    ctx += `\n  ${schema}.FATO_BIORC_MENSAL_RESTOS_A_PAGAR`;
+    ctx += `\n    → Restos a Pagar (RAP) — empenhos de anos anteriores não pagos`;
+    ctx += `\n  ${schema}.FATO_BIORC_SUPRIMENTO_FINANCEIRO_DESPESA`;
+    ctx += `\n    → Suprimento Financeiro, Adiantamento`;
+
+    ctx += `\n\n📐 DIMENSÕES (classificações / de-para):`;
+    ctx += `\n  ${schema}.DIM_BIORC_INSTITUCIONAL`;
+    ctx += `\n    → Secretaria, Órgão`;
+    ctx += `\n  ${schema}.DIM_BIORC_UNIDADE_GESTORA`;
+    ctx += `\n    → Unidade Gestora`;
+    ctx += `\n  ${schema}.DIM_BIORC_FORNECEDOR`;
+    ctx += `\n    → Fornecedor`;
+    ctx += `\n  ${schema}.DIM_BIORC_ELEMENTO_DESPESA`;
+    ctx += `\n    → Elemento de Despesa`;
+    ctx += `\n  ${schema}.DIM_BIORC_NATUREZA_DESPESA`;
+    ctx += `\n    → Natureza de Despesa`;
+    ctx += `\n  ${schema}.DIM_BIORC_GRUPO_DESPESA`;
+    ctx += `\n    → Grupo de Despesa`;
+    ctx += `\n  ${schema}.DIM_BIORC_FONTE_RECURSO`;
+    ctx += `\n    → Fonte de Recurso`;
+    ctx += `\n  ${schema}.DIM_BIORC_FUNCAO`;
+    ctx += `\n    → Função`;
+    ctx += `\n  ${schema}.DIM_BIORC_SUBFUNCAO`;
+    ctx += `\n    → Subfunção`;
+    ctx += `\n  ${schema}.DIM_BIORC_PROGRAMA`;
+    ctx += `\n    → Programa`;
+    ctx += `\n  ${schema}.DIM_BIORC_ACAO`;
+    ctx += `\n    → Ação`;
+    ctx += `\n  ${schema}.DIM_BIORC_MODALIDADE_DESPESA`;
+    ctx += `\n    → Modalidade de Licitação/Despesa`;
+    ctx += `\n  ${schema}.DIM_BIORC_DATA_CALENDARIO`;
+    ctx += `\n    → Data, Mês, Ano (dimensão de tempo)`;
+
+    ctx += `\n\n🏠 IPTU / CONTRIBUINTE:`;
+    ctx += `\n  ${schema}.PREFEITURA_IPTU_LANCADO`;
+    ctx += `\n    → IPTU lançado, contribuinte, nome, bairro, endereço, valor cobrado, vencimento`;
+    ctx += `\n  ${schema}.PREFEITURA_IPTU_PAGO`;
+    ctx += `\n    → IPTU pago, pagamentos registrados, data de pagamento`;
+    ctx += `\n    → Inadimplência = LANCADO sem correspondente em PAGO com vencimento passado`;
+
+    ctx += `\n\n⚠ USE APENAS as tabelas listadas acima. Não consulte outras tabelas do banco.`;
 
     // ── Tabelas IPTU — foco principal ──
     ctx += `\n\n━━━ TABELAS IPTU — FOCO PRINCIPAL ━━━`;
