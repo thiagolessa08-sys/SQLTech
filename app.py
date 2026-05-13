@@ -404,6 +404,9 @@ _ANNOUNCEMENT_PHRASES = [
     'vou tentar', 'deixe-me', 'agora consulto', 'perfeito! agora',
     'vou elaborar', 'vou preparar', 'vou apresentar', 'vou verificar',
     'primeiro vou', 'para isso vou', 'com base nisso', 'agora podemos',
+    'deixe-me tentar', 'vou localizar', 'preciso localizar', 'vou explorar',
+    'vou investigar', 'vou pesquisar', 'vou consultar', 'let me', 'trying',
+    'vou checar', 'vou analisar antes', 'primeiro preciso',
 ]
 
 def _is_announcement(content):
