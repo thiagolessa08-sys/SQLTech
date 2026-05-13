@@ -871,6 +871,16 @@ function buildSystemPrompt(){
     ctx += `\nPara relacionar as tabelas, busque a chave de ligação explorando primeiro:`;
     ctx += `\n  SELECT TOP 5 * FROM ${schema}.PREFEITURA_IPTU_LANCADO`;
     ctx += `\n  SELECT TOP 5 * FROM ${schema}.PREFEITURA_IPTU_PAGO`;
+    ctx += `\n`;
+    ctx += `\n⚠ REGRA OBRIGATÓRIA — NOME / CONTRIBUINTE:`;
+    ctx += `\nSempre que a pergunta envolver nome de pessoa, contribuinte, proprietário ou qualquer busca por cadastro individual,`;
+    ctx += `\nUSE EXCLUSIVAMENTE as tabelas PREFEITURA_IPTU_LANCADO e/ou PREFEITURA_IPTU_PAGO.`;
+    ctx += `\nNÃO consulte outras tabelas para dados de nome/contribuinte — elas são a fonte oficial de cadastro de IPTU.`;
+    ctx += `\nExemplos de perguntas que ativam essa regra:`;
+    ctx += `\n  • "Qual o débito do João Silva?"  → buscar nome em PREFEITURA_IPTU_LANCADO`;
+    ctx += `\n  • "O contribuinte 12345 pagou?"   → buscar código em PREFEITURA_IPTU_PAGO`;
+    ctx += `\n  • "Quem deve IPTU na Rua das Flores?" → filtrar endereço em PREFEITURA_IPTU_LANCADO`;
+    ctx += `\n  • "Mostre os lançamentos da Maria"  → buscar nome em PREFEITURA_IPTU_LANCADO`;
     // Inclui colunas pré-carregadas se disponíveis
     const iptuSchemas = dbContext.sybase_iptu_schemas || {};
     if(iptuSchemas['PREFEITURA_IPTU_LANCADO']?.length){
