@@ -891,8 +891,16 @@ function buildSystemPrompt(){
   if(dbContext?.sybase_disponivel){
     ctx += `\nBanco: Sybase IQ 16 | Schema: ${schema} | Acesso: exclusivo via ferramenta query_database.`;
 
+    // Lista REAL de tabelas disponíveis no banco
+    const tabelas = dbContext?.sybase_tabelas || [];
+    if(tabelas.length > 0){
+      ctx += `\n\n📋 TABELAS EXISTENTES NO BANCO (${tabelas.length} total):`;
+      ctx += `\n${tabelas.join(', ')}`;
+      ctx += `\n⚠ USE SOMENTE essas tabelas — não invente nomes. Se uma tabela não está aqui, ela não existe.`;
+    }
+
     // Mapeamento semântico curado — use estas tabelas para cada conceito
-    ctx += `\n\n━━━ TABELAS AUTORIZADAS E SEU USO ━━━`;
+    ctx += `\n\n━━━ GUIA DE USO DAS TABELAS ━━━`;
     ctx += `\n\n══════════════════════════════════════`;
     ctx += `\nSINTAXE OBRIGATÓRIA — SYBASE IQ 16`;
     ctx += `\n══════════════════════════════════════`;
