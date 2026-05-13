@@ -1038,6 +1038,9 @@ function buildSystemPrompt(){
   ctx += '\n✔ CORRETO: chamar query_database sem nenhum texto antes. O resultado da ferramenta é sua fonte — só então escreva a resposta.';
   ctx += '\nPode chamar múltiplas vezes em sequência (explorar schema → consultar dados → responder).';
   ctx += '\nNunca invente valores. Se não encontrar dados, diga o que consultou e peça mais detalhes.';
+  ctx += '\n\n🔍 SE NÃO SOUBER O NOME EXATO DA TABELA, execute esta query para listar todas as tabelas do schema:';
+  ctx += `\nSELECT TOP 200 st.table_name FROM sys.systable st JOIN sys.sysuser su ON st.creator = su.user_id WHERE su.user_name = '${schema}' AND st.table_type = 'BASE' ORDER BY st.table_name`;
+  ctx += '\nNUNCA pergunte ao usuário qual é o nome da tabela — descubra você mesmo consultando o catálogo acima.';
 
   ctx += '\n\n=== INSTRUÇÕES DE RESPOSTA ===';
   ctx += '\nResponda em português, técnico e acessível. Máximo 3 parágrafos. NUNCA diga que não há dados — use a ferramenta para buscar.';
