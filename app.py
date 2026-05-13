@@ -399,6 +399,27 @@ def safe_sql(sql):
         s = s.rstrip(";") + " LIMIT 100"
     return query(s)
 
+_ANNOUNCEMENT_PHRASES = [
+    'agora vou', 'vou criar', 'vou buscar', 'vou montar', 'vou mostrar',
+    'vou tentar', 'deixe-me', 'agora consulto', 'perfeito! agora',
+    'vou elaborar', 'vou preparar', 'vou apresentar', 'vou verificar',
+    'primeiro vou', 'para isso vou', 'com base nisso', 'agora podemos',
+]
+
+def _is_announcement(content):
+    """Detecta se a resposta é um anúncio sem dados reais (modelo travado)."""
+    text = ' '.join(blk.get('text', '') for blk in content if blk.get('type') == 'text').strip()
+    if not text:
+        return False
+    # Termina com ":" — claramente incompleto
+    if text.endswith(':'):
+        return True
+    text_low = text.lower()
+    # Contém frase de anúncio E não tem dados reais (sem gráfico, curto demais)
+    has_announcement = any(p in text_low for p in _ANNOUNCEMENT_PHRASES)
+    has_data = '[chart]' in text_low or 'r$' in text_low or len(text) > 400
+    return has_announcement and not has_data
+
 @app.route("/api/chat", methods=["POST"])
 def chat():
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -478,10 +499,11 @@ def chat():
                         "content": payload_res
                     })
             call["messages"].append({"role": "user", "content": results})
-        elif stop == "end_turn" and not queries_run:
-            # Modelo respondeu com texto mas não executou nenhuma query ainda — forçar execução
+        elif stop == "end_turn" and _is_announcement(content):
+            # Modelo anunciou algo mas não entregou — forçar resposta final
             call["messages"].append({"role": "assistant", "content": content})
-            call["messages"].append({"role": "user", "content": "Chame query_database agora com a SQL. Não escreva mais texto antes de executar."})
+            push_msg = "Execute a query e apresente os dados agora." if not queries_run else "Apresente os resultados agora com o gráfico. Não anuncie — entregue direto."
+            call["messages"].append({"role": "user", "content": push_msg})
         else:
             if queries_run:
                 data["queries_executed"] = queries_run
