@@ -844,175 +844,132 @@ function buildSystemPrompt(){
 
     // Mapeamento semântico curado — use estas tabelas para cada conceito
     ctx += `\n\n━━━ TABELAS AUTORIZADAS E SEU USO ━━━`;
-    ctx += `\n\n📊 FATOS (dados numéricos / transações):`;
-    ctx += `\n  ${schema}.FATO_BIORC_MENSAL_INTERVENCAO_DOTACAO`;
-    ctx += `\n    → Despesas, Empenho, Liquidação, Pagamento mensal`;
-    ctx += `\n  ${schema}.FATO_BIORC_ALTERACAO_ORCAMENTARIA_DESPESA`;
-    ctx += `\n    → Suplementação, Redução Orçamentária, alterações de dotação`;
-    ctx += `\n  ${schema}.FATO_BIORC_EXECUCAO_RECEITA`;
-    ctx += `\n    → Receita arrecadada, arrecadação por categoria/fonte`;
-    ctx += `\n  ${schema}.FATO_BIORC_ELABORACAO_ORCAMENTO`;
-    ctx += `\n    → Orçamento previsto, LOA (Lei Orçamentária Anual)`;
-    ctx += `\n  ${schema}.FATO_BIORC_MENSAL_RESTOS_A_PAGAR`;
-    ctx += `\n    → Restos a Pagar (RAP) — empenhos de anos anteriores não pagos`;
-    ctx += `\n  ${schema}.FATO_BIORC_SUPRIMENTO_FINANCEIRO_DESPESA`;
-    ctx += `\n    → Suprimento Financeiro, Adiantamento`;
+    ctx += `\n\n══════════════════════════════════════`;
+    ctx += `\nSINTAXE OBRIGATÓRIA — SYBASE IQ 16`;
+    ctx += `\n══════════════════════════════════════`;
+    ctx += `\n• Paginação:     SELECT TOP N col FROM tabela       (NUNCA LIMIT)`;
+    ctx += `\n• Datas:         YEAR(col), MONTH(col), DATEFORMAT(col,'yyyy-mm-dd')`;
+    ctx += `\n• Cast:          CONVERT(NUMERIC, col) ou CAST(col AS NUMERIC)`;
+    ctx += `\n• Nulos:         ISNULL(col, 0)`;
+    ctx += `\n• Concatenar:    col1 || ' ' || col2`;
+    ctx += `\n• Sem GROUP_CONCAT: use LIST(col, ',')`;
+    ctx += `\n• Comparações de string: CASE-SENSITIVE — NUNCA use UPPER()/LOWER()`;
+    ctx += `\n• Ano dos dados: USE SEMPRE WHERE d.NO_ANO = 2025 para dados orçamentários`;
+    ctx += `\n  (YEAR(NOW()) retorna 2026 mas dados mais recentes são de 2025)`;
 
-    ctx += `\n\n📐 DIMENSÕES (classificações / de-para):`;
-    ctx += `\n  ${schema}.DIM_BIORC_INSTITUCIONAL`;
-    ctx += `\n    → Secretaria, Órgão`;
-    ctx += `\n  ${schema}.DIM_BIORC_UNIDADE_GESTORA`;
-    ctx += `\n    → Unidade Gestora`;
-    ctx += `\n  ${schema}.DIM_BIORC_FORNECEDOR`;
-    ctx += `\n    → Fornecedor`;
-    ctx += `\n  ${schema}.DIM_BIORC_ELEMENTO_DESPESA`;
-    ctx += `\n    → Elemento de Despesa`;
-    ctx += `\n  ${schema}.DIM_BIORC_NATUREZA_DESPESA`;
-    ctx += `\n    → Natureza de Despesa`;
-    ctx += `\n  ${schema}.DIM_BIORC_GRUPO_DESPESA`;
-    ctx += `\n    → Grupo de Despesa`;
-    ctx += `\n  ${schema}.DIM_BIORC_FONTE_RECURSO`;
-    ctx += `\n    → Fonte de Recurso`;
-    ctx += `\n  ${schema}.DIM_BIORC_FUNCAO`;
-    ctx += `\n    → Função`;
-    ctx += `\n  ${schema}.DIM_BIORC_SUBFUNCAO`;
-    ctx += `\n    → Subfunção`;
-    ctx += `\n  ${schema}.DIM_BIORC_PROGRAMA`;
-    ctx += `\n    → Programa`;
-    ctx += `\n  ${schema}.DIM_BIORC_ACAO`;
-    ctx += `\n    → Ação`;
-    ctx += `\n  ${schema}.DIM_BIORC_MODALIDADE_DESPESA`;
-    ctx += `\n    → Modalidade de Licitação/Despesa`;
-    ctx += `\n  ${schema}.DIM_BIORC_DATA_CALENDARIO`;
-    ctx += `\n    → Data, Mês, Ano (dimensão de tempo)`;
+    ctx += `\n\n══════════════════════════════════════`;
+    ctx += `\nTABELAS FATO`;
+    ctx += `\n══════════════════════════════════════`;
 
-    ctx += `\n\n🏠 IPTU / CONTRIBUINTE:`;
-    ctx += `\n  ${schema}.PREFEITURA_IPTU_LANCADO`;
-    ctx += `\n    → IPTU lançado, contribuinte, nome, bairro, endereço, valor cobrado, vencimento`;
-    ctx += `\n  ${schema}.PREFEITURA_IPTU_PAGO`;
-    ctx += `\n    → IPTU pago, pagamentos registrados, data de pagamento`;
-    ctx += `\n    → Inadimplência = LANCADO sem correspondente em PAGO com vencimento passado`;
+    // ── FATOS ──
+    ctx += `\n\n${schema}.FATO_BIORC_MENSAL_INTERVENCAO_DOTACAO`;
+    ctx += `\n  → Despesas mensais (empenho / liquidado / pago)`;
+    ctx += `\n  Valores: VL_SALDO_MES_EMPENHADO, VL_SALDO_MES_LIQUIDADO, VL_SALDO_MES_PAGO`;
+    ctx += `\n  JOINs: SK_DATA_CALENDARIO_MES→DIM_BIORC_DATA_CALENDARIO.SK_DATA_CALENDARIO`;
+    ctx += `\n         SK_INSTITUCIONAL→DIM_BIORC_INSTITUCIONAL`;
+    ctx += `\n         SK_NATUREZA_DESPESA→DIM_BIORC_NATUREZA_DESPESA`;
+    ctx += `\n         SK_FORNECEDOR→DIM_BIORC_FORNECEDOR`;
+    ctx += `\n         SK_FONTE_RECURSO→DIM_BIORC_FONTE_RECURSO`;
+    ctx += `\n         SK_UNIDADE_GESTORA→DIM_BIORC_UNIDADE_GESTORA`;
+    ctx += `\n         SK_FUNCIONAL_PROGRAMATICA→BRIDGE_BIORC_FUNCIONAL_PROGRAMATICA`;
 
-    ctx += `\n\n⚠ USE APENAS as tabelas listadas acima. Não consulte outras tabelas do banco.`;
+    ctx += `\n\n${schema}.FATO_BIORC_EXECUCAO_RECEITA`;
+    ctx += `\n  → Receita/arrecadação efetiva ("receita" e "arrecadação" são sinônimos)`;
+    ctx += `\n  Valor: VL_ARRECADACAO_RECEITA`;
+    ctx += `\n  ⚠ REGRA CRÍTICA: SEMPRE filtrar CD_TIPO_NATUREZA_RECEITA IN (1,2)`;
+    ctx += `\n    CD=1 → Receita Bruta | CD=2 → Deduções (negativos) | Líquida = Bruta + Deduções`;
+    ctx += `\n    NUNCA faça SUM sem esse filtro (existe CD=-1 que distorce)`;
+    ctx += `\n  JOIN: DIM_BIORC_TIPO_NATUREZA_RECEITA ON SK_TIPO_NATUREZA_RECEITA`;
+    ctx += `\n  Tempo: SK_DATA_CALENDARIO_ANO→DIM_BIORC_DATA_CALENDARIO.SK_DATA_CALENDARIO`;
 
-    // ── Tabelas IPTU — foco principal ──
-    ctx += `\n\n━━━ TABELAS IPTU — FOCO PRINCIPAL ━━━`;
-    ctx += `\n⭐ ${schema}.PREFEITURA_IPTU_LANCADO  — Lançamentos de IPTU (todas as cobranças emitidas pela prefeitura)`;
-    ctx += `\n⭐ ${schema}.PREFEITURA_IPTU_PAGO      — Pagamentos de IPTU (os valores efetivamente recebidos/quitados)`;
-    ctx += `\n`;
-    ctx += `\nRelação entre as tabelas:`;
-    ctx += `\n  • LANCADO  = tudo que foi cobrado (universo de dívida)`;
-    ctx += `\n  • PAGO     = o que foi pago (total ou parcialmente)`;
-    ctx += `\n  • Inadimplência IPTU = registros em LANCADO cujo vencimento já passou e não têm correspondente em PAGO`;
-    ctx += `\n  • A vencer = registros em LANCADO com vencimento futuro — NÃO são inadimplentes`;
-    ctx += `\n`;
-    ctx += `\nPara relacionar as tabelas, busque a chave de ligação explorando primeiro:`;
-    ctx += `\n  SELECT TOP 5 * FROM ${schema}.PREFEITURA_IPTU_LANCADO`;
-    ctx += `\n  SELECT TOP 5 * FROM ${schema}.PREFEITURA_IPTU_PAGO`;
-    ctx += `\n`;
-    ctx += `\n⚠ REGRA OBRIGATÓRIA — NOME / CONTRIBUINTE:`;
-    ctx += `\nSempre que a pergunta envolver nome de pessoa, contribuinte, proprietário ou qualquer busca por cadastro individual,`;
-    ctx += `\nUSE EXCLUSIVAMENTE as tabelas PREFEITURA_IPTU_LANCADO e/ou PREFEITURA_IPTU_PAGO.`;
-    ctx += `\nNÃO consulte outras tabelas para dados de nome/contribuinte — elas são a fonte oficial de cadastro de IPTU.`;
-    ctx += `\nExemplos de perguntas que ativam essa regra:`;
-    ctx += `\n  • "Qual o débito do João Silva?"  → buscar nome em PREFEITURA_IPTU_LANCADO`;
-    ctx += `\n  • "O contribuinte 12345 pagou?"   → buscar código em PREFEITURA_IPTU_PAGO`;
-    ctx += `\n  • "Quem deve IPTU na Rua das Flores?" → filtrar endereço em PREFEITURA_IPTU_LANCADO`;
-    ctx += `\n  • "Mostre os lançamentos da Maria"  → buscar nome em PREFEITURA_IPTU_LANCADO`;
-    // Inclui colunas pré-carregadas se disponíveis
-    const iptuSchemas = dbContext.sybase_iptu_schemas || {};
-    if(iptuSchemas['PREFEITURA_IPTU_LANCADO']?.length){
-      ctx += `\n\nColunas PREFEITURA_IPTU_LANCADO: ${iptuSchemas['PREFEITURA_IPTU_LANCADO'].join(', ')}`;
-    }
-    if(iptuSchemas['PREFEITURA_IPTU_PAGO']?.length){
-      ctx += `\nColunas PREFEITURA_IPTU_PAGO: ${iptuSchemas['PREFEITURA_IPTU_PAGO'].join(', ')}`;
-    }
+    ctx += `\n\n${schema}.FATO_BIORC_MENSAL_RESTOS_A_PAGAR`;
+    ctx += `\n  → RAP: despesas empenhadas em anos anteriores ainda não pagas`;
+    ctx += `\n  Colunas: VL_RAP_PROCESSADO_INSCRITO/PAGO/CANCELADO, VL_RAP_NAO_PROCESSADO_INSCRITO/PAGO`;
+    ctx += `\n  Extra: NR_ANO_EMPENHO (ano do empenho original)`;
 
-    ctx += `\n\n━━━ SINTAXE OBRIGATÓRIA ━━━`;
-    ctx += `\n✔ Use TOP N para limitar linhas — NUNCA use LIMIT:`;
-    ctx += `\n    SELECT TOP 100 col1, col2 FROM ${schema}.tabela WHERE ...`;
-    ctx += `\n✔ Sempre qualifique tabelas com o schema:`;
-    ctx += `\n    FROM ${schema}.nome_tabela  (NUNCA apenas FROM nome_tabela)`;
-    ctx += `\n✔ Aliases são obrigatórios em subqueries:`;
-    ctx += `\n    SELECT * FROM (SELECT TOP 10 x FROM ${schema}.t) AS sub`;
+    ctx += `\n\n${schema}.FATO_BIORC_ELABORACAO_ORCAMENTO`;
+    ctx += `\n  → LOA — orçamento aprovado por lei`;
+    ctx += `\n  Colunas: VL_PROJ_LEI, VL_ORC_APROV_LEI, VL_EMENDA`;
+    ctx += `\n  JOIN: SK_INSTITUCIONAL_EXECUCAO→DIM_BIORC_INSTITUCIONAL.SK_INSTITUCIONAL`;
 
-    ctx += `\n\n━━━ CASE SENSITIVITY — REGRA CRÍTICA ━━━`;
-    ctx += `\n⚠ Sybase IQ é CASE SENSITIVE por padrão em comparações de string.`;
-    ctx += `\n✘ NUNCA use UPPER() ou LOWER() para contornar isso — causa lentidão e resultados incorretos.`;
-    ctx += `\n✘ NUNCA: WHERE UPPER(nome) = 'PREFEITURA'`;
-    ctx += `\n✔ SEMPRE use o valor exato com o case correto:`;
-    ctx += `\n    WHERE nome = 'Prefeitura Municipal'`;
-    ctx += `\n✔ Para buscas parciais, use LIKE com o case exato:`;
-    ctx += `\n    WHERE descricao LIKE '%Saúde%'   -- respeite maiúsculas/acentos`;
-    ctx += `\n✔ Se não souber o case, primeiro explore a coluna:`;
-    ctx += `\n    SELECT DISTINCT coluna FROM ${schema}.tabela ORDER BY coluna`;
+    ctx += `\n\n${schema}.FATO_BIORC_ALTERACAO_ORCAMENTARIA_DESPESA`;
+    ctx += `\n  → Suplementações e reduções (créditos adicionais)`;
+    ctx += `\n  Coluna: VL_ALTERACAOORCAMENTARIA (positivo=suplementação, negativo=redução)`;
 
-    ctx += `\n\n━━━ DATAS E TEMPO ━━━`;
-    ctx += `\n✔ Funções de data: YEAR(col), MONTH(col), DAY(col), DATEPART(yy, col), GETDATE()`;
-    ctx += `\n✔ Filtrar por ano:   WHERE YEAR(data_col) = 2024`;
-    ctx += `\n✔ Filtrar por mês:   WHERE MONTH(data_col) = 3`;
-    ctx += `\n✔ Intervalo de datas: WHERE data_col BETWEEN '2024-01-01' AND '2024-12-31'`;
-    ctx += `\n✔ Formato de data literal: 'YYYY-MM-DD' ou 'YYYY-MM-DD HH:MM:SS'`;
-    ctx += `\n✘ NUNCA use DATE_FORMAT() ou STRFTIME() — são MySQL/SQLite, não existem no Sybase IQ`;
+    ctx += `\n\n${schema}.FATO_BIORC_SUPRIMENTO_FINANCEIRO_DESPESA`;
+    ctx += `\n  → Adiantamentos/suprimentos financeiros a servidores`;
+    ctx += `\n  Colunas: VL_SUPRIMENTO_FINANCEIRO, CD_EMPENHO, DS_SUPRIMENTO_FINANCEIRO`;
 
-    ctx += `\n\n━━━ FUNÇÕES E AGREGAÇÕES ━━━`;
-    ctx += `\n✔ Agregação: SUM(), AVG(), COUNT(), COUNT(DISTINCT col), MAX(), MIN()`;
-    ctx += `\n✔ Conversão: CAST(col AS INTEGER), CONVERT(NUMERIC(15,2), col)`;
-    ctx += `\n✔ Nulos: ISNULL(col, 0), col IS NULL, col IS NOT NULL, COALESCE(col, 0)`;
-    ctx += `\n✔ Strings: SUBSTRING(col, inicio, tamanho), LTRIM(), RTRIM(), TRIM(), LEN()`;
-    ctx += `\n✔ Concatenação: col1 || ' ' || col2  ou  col1 + ' ' + col2`;
-    ctx += `\n✘ NUNCA use GROUP_CONCAT(), CONCAT() — não existem no Sybase IQ`;
-    ctx += `\n✘ NUNCA use IFNULL() — use ISNULL()`;
+    // ── DIMENSÕES ──
+    ctx += `\n\n══════════════════════════════════════`;
+    ctx += `\nTABELAS DIMENSÃO`;
+    ctx += `\n══════════════════════════════════════`;
 
-    ctx += `\n\n━━━ JOINS E SUBQUERIES ━━━`;
-    ctx += `\n✔ INNER JOIN, LEFT JOIN, RIGHT JOIN são suportados`;
-    ctx += `\n✔ Sempre use aliases nas tabelas: FROM ${schema}.tabela t1 JOIN ${schema}.outra t2 ON t1.id = t2.id`;
-    ctx += `\n✔ EXISTS e IN são suportados`;
-    ctx += `\n✘ NUNCA use FULL OUTER JOIN sem verificar suporte na versão`;
+    ctx += `\n\n${schema}.DIM_BIORC_INSTITUCIONAL  → Secretarias e órgãos`;
+    ctx += `\n  CD_ORGAO (VARCHAR — SEMPRE aspas simples):`;
+    ctx += `\n    '1'=Poder Executivo | '2'=Câmara Municipal | '-1'/'-2'/'-3'=excluir`;
+    ctx += `\n  DS_ORGAO=nome do órgão | DS_UO=nome da secretaria/unidade orçamentária`;
+    ctx += `\n  REGRA: secretarias reais → WHERE CD_ORGAO = '1' AND DS_UO <> DS_ORGAO`;
 
-    ctx += `\n\n━━━ DESCOBERTA DE SCHEMA ━━━`;
-    ctx += `\n→ Colunas de uma tabela:`;
-    ctx += `\n  SELECT c.column_name, c.domain_name FROM sys.syscolumn c JOIN sys.systable t ON c.table_id=t.table_id WHERE t.table_name='nome_tabela' ORDER BY c.column_id`;
-    ctx += `\n→ Todas as tabelas do schema:`;
-    ctx += `\n  SELECT table_name FROM sys.systable WHERE user_name(creator)='${schema}' AND table_type IN ('BASE','VIEW') ORDER BY table_name`;
-    ctx += `\n→ Amostra de dados (SEMPRE explore antes de responder):`;
-    ctx += `\n  SELECT TOP 5 * FROM ${schema}.nome_tabela`;
+    ctx += `\n\n${schema}.DIM_BIORC_DATA_CALENDARIO  → Calendário fiscal`;
+    ctx += `\n  SK_DATA_CALENDARIO (chave JOIN) | NO_ANO, NO_MES (1-12), DS_MES`;
+    ctx += `\n  NO_ANO_MES (YYYYMM), NO_TRIMESTRE_ANO, NO_SEMESTRE_ANO`;
 
-    ctx += `\n\n━━━ REGRA DE NEGÓCIO: INADIMPLÊNCIA ━━━`;
-    ctx += `\n⚠ CRÍTICO: ao calcular inadimplência, NUNCA considere como inadimplente um lançamento cujo mês de vencimento ainda não chegou.`;
-    ctx += `\n`;
-    ctx += `\nLógica correta:`;
-    ctx += `\n  • Inadimplente = vencimento já passou E pagamento não foi registrado`;
-    ctx += `\n  • Em aberto não vencido = vencimento ainda não chegou → NÃO é inadimplência`;
-    ctx += `\n  • Pago em atraso = vencimento passou, mas pagamento foi feito depois → adimplente (porém com atraso)`;
-    ctx += `\n`;
-    ctx += `\nSempre filtre comparando mês/data de vencimento com o mês/data atual (GETDATE()):`;
-    ctx += `\n  WHERE data_vencimento < GETDATE()   -- só vencidos`;
-    ctx += `\n  AND (data_pagamento IS NULL OR data_pagamento > data_vencimento)  -- não pagos ou pagos com atraso`;
-    ctx += `\n`;
-    ctx += `\nAo apresentar resultado de inadimplência, SEMPRE informe também:`;
-    ctx += `\n  1. Total de lançamentos vencidos sem pagamento (inadimplentes reais)`;
-    ctx += `\n  2. Total de lançamentos em aberto ainda não vencidos (a vencer)`;
-    ctx += `\n  3. Não some os dois grupos — são naturezas diferentes`;
-    ctx += `\n`;
-    ctx += `\nExemplo de query correta para inadimplência:`;
-    ctx += `\n  SELECT COUNT(*) AS inadimplentes, SUM(valor) AS valor_inadimplente`;
-    ctx += `\n  FROM ${schema}.lancamentos`;
-    ctx += `\n  WHERE data_vencimento < GETDATE()`;
-    ctx += `\n  AND data_pagamento IS NULL`;
-    ctx += `\n`;
-    ctx += `\nExemplo para separar vencidos x a vencer:`;
-    ctx += `\n  SELECT`;
-    ctx += `\n    SUM(CASE WHEN data_vencimento < GETDATE() AND data_pagamento IS NULL THEN 1 ELSE 0 END) AS inadimplentes,`;
-    ctx += `\n    SUM(CASE WHEN data_vencimento >= GETDATE() AND data_pagamento IS NULL THEN 1 ELSE 0 END) AS a_vencer`;
-    ctx += `\n  FROM ${schema}.lancamentos`;
+    ctx += `\n\n${schema}.DIM_BIORC_NATUREZA_DESPESA  → Classificação econômica (elemento)`;
+    ctx += `\n  CD_NATUREZA_DESPESA, DS_NATUREZA_DESPESA`;
+    ctx += `\n  Contém SK_GRUPO_DESPESA→DIM_BIORC_GRUPO_DESPESA, SK_ELEMENTO_DESPESA→DIM_BIORC_ELEMENTO_DESPESA`;
 
-    ctx += `\n\n━━━ FLUXO DE TRABALHO ━━━`;
-    ctx += `\n1. Se não conhecer as colunas → execute SELECT TOP 5 * para explorar`;
-    ctx += `\n2. Verifique o case dos valores com SELECT DISTINCT antes de filtrar`;
-    ctx += `\n3. Monte a query definitiva com os valores corretos`;
-    ctx += `\n4. Em análises de inadimplência → sempre separe vencidos x a vencer`;
-    ctx += `\n5. Prefira queries enxutas com TOP N para evitar timeout`;
+    ctx += `\n\n${schema}.DIM_BIORC_GRUPO_DESPESA`;
+    ctx += `\n  CD_GRUPO: 1=Pessoal, 3=Outras Desp.Correntes, 4=Investimentos | DS_GRUPO`;
+    ctx += `\n  CD_CATEGORIA/DS_CATEGORIA (Despesas Correntes / Despesas de Capital)`;
+
+    ctx += `\n\n${schema}.DIM_BIORC_ELEMENTO_DESPESA`;
+    ctx += `\n  CD_ELEMENTO: 01=Vencimentos, 14=Diárias, 30=Material Consumo, 39=Outros Serv PJ`;
+    ctx += `\n  DS_ELEMENTO_DESPESA`;
+
+    ctx += `\n\n${schema}.DIM_BIORC_FORNECEDOR`;
+    ctx += `\n  DS_FORNECEDOR, CD_CPF_CNPJ_FORNECEDOR, DS_TIPO_FORNECEDOR`;
+
+    ctx += `\n\n${schema}.DIM_BIORC_FONTE_RECURSO`;
+    ctx += `\n  CD_FONTE_RECURSO, DS_FONTE_RECURSO`;
+    ctx += `\n  DS_GRUPO_FONTE: Ordinários / Vinculados (ex: Tesouro, FUNDEB, SUS, Fed.)`;
+
+    ctx += `\n\n${schema}.DIM_BIORC_UNIDADE_GESTORA`;
+    ctx += `\n  CD_UNIDADE_GESTORA, DS_UNIDADE_GESTORA`;
+
+    ctx += `\n\n${schema}.DIM_BIORC_FUNCAO / DIM_BIORC_SUBFUNCAO / DIM_BIORC_PROGRAMA / DIM_BIORC_ACAO`;
+    ctx += `\n  DS_FUNCAO (Saúde/Educação/Urbanismo...), DS_SUBFUNCAO, DS_PROGRAMA_EXECUCAO, DS_ACAO_EXECUCAO`;
+    ctx += `\n  Acesso via: ${schema}.BRIDGE_BIORC_FUNCIONAL_PROGRAMATICA (SK_FUNCIONAL_PROGRAMATICA nas FATOs)`;
+
+    ctx += `\n\n${schema}.DIM_BIORC_MODALIDADE_DESPESA`;
+    ctx += `\n  CD_MODALIDADE: 90=Aplicação Direta, 40=Transferências | DS_MODALIDADE`;
+
+    // ── IPTU ──
+    ctx += `\n\n══════════════════════════════════════`;
+    ctx += `\nTABELAS IPTU — CONTRIBUINTE`;
+    ctx += `\n══════════════════════════════════════`;
+
+    ctx += `\n\n⭐ ${schema}.PREFEITURA_IPTU_LANCADO  → IPTU cobrado por contribuinte/mês`;
+    ctx += `\n  CPF_CNPJ, NOME, Bairro (B maiúsculo), no_cep, Tributo`;
+    ctx += `\n  Ano_Mes: numérico YYYYMM — extrair ano: LEFT(CAST(Ano_Mes AS VARCHAR(6)),4)`;
+    ctx += `\n  Valor_Lancado: valor cobrado`;
+
+    ctx += `\n\n⭐ ${schema}.PREFEITURA_IPTU_PAGO  → IPTU efetivamente pago`;
+    ctx += `\n  Mesmas chaves + Valor_Pago, Valor_Juros, Valor_Multa, Valor_Correcao`;
+    ctx += `\n  Inadimplência: LEFT JOIN PREFEITURA_IPTU_LANCADO ON CPF_CNPJ AND Ano_Mes`;
+
+    ctx += `\n\n⚠ Nome/contribuinte/bairro/CPF → USE SOMENTE tabelas IPTU acima`;
+
+    // ── REGRAS DE NEGÓCIO ──
+    ctx += `\n\n══════════════════════════════════════`;
+    ctx += `\nREGRAS DE NEGÓCIO CRÍTICAS`;
+    ctx += `\n══════════════════════════════════════`;
+    ctx += `\n1. Receita: mostrar bruta (CD=1), deduções (CD=2) e líquida (=bruta+deduções).`;
+    ctx += `\n   Deduções já são NEGATIVAS — líquida = bruta + deduções (não subtrair).`;
+    ctx += `\n2. Ano corrente: WHERE d.NO_ANO = 2025. NUNCA use YEAR(NOW()) para orçamento.`;
+    ctx += `\n3. Secretarias: WHERE CD_ORGAO = '1' AND DS_UO <> DS_ORGAO (CD_ORGAO é VARCHAR).`;
+    ctx += `\n4. Inadimplência IPTU: LEFT JOIN LANCADO x PAGO. Vencidos sem pag = inadimplentes.`;
+    ctx += `\n   Ano_Mes ainda não chegou → a vencer, NÃO é inadimplência.`;
 
   } else {
     ctx += '\n⚠ Banco Sybase IQ não conectado. Verifique a variável AGENT_URL no ambiente.';
