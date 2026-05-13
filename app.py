@@ -478,6 +478,10 @@ def chat():
                         "content": payload_res
                     })
             call["messages"].append({"role": "user", "content": results})
+        elif stop == "end_turn" and not queries_run:
+            # Modelo respondeu com texto mas não executou nenhuma query ainda — forçar execução
+            call["messages"].append({"role": "assistant", "content": content})
+            call["messages"].append({"role": "user", "content": "Chame query_database agora com a SQL. Não escreva mais texto antes de executar."})
         else:
             if queries_run:
                 data["queries_executed"] = queries_run
