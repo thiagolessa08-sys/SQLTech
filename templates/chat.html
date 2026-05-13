@@ -974,9 +974,11 @@ function buildSystemPrompt(){
   }
 
   ctx += '\n\n=== FERRAMENTA query_database ===';
-  ctx += '\n⚡ EXECUTE IMEDIATAMENTE — nunca anuncie o que vai fazer. Não escreva "vou buscar", "agora consulto", "Perfeito! Agora vou...". Chame a ferramenta direto.';
-  ctx += '\nUSE SEMPRE que precisar de dados — nunca invente valores. Pode chamar múltiplas vezes.';
-  ctx += '\nQuando não souber o nome exato de uma tabela ou coluna, explore primeiro com SELECT TOP 5.';
+  ctx += '\n⚡ REGRA DE OURO: ao receber qualquer pergunta sobre dados, chame query_database IMEDIATAMENTE como PRIMEIRA ação — antes de escrever qualquer texto.';
+  ctx += '\n✘ PROIBIDO: "Vou buscar...", "Agora consulto...", "Perfeito! Agora vou...", "Para responder preciso..."';
+  ctx += '\n✔ CORRETO: chamar query_database sem nenhum texto antes. O resultado da ferramenta é sua fonte — só então escreva a resposta.';
+  ctx += '\nPode chamar múltiplas vezes em sequência (explorar schema → consultar dados → responder).';
+  ctx += '\nNunca invente valores. Se não encontrar dados, diga o que consultou e peça mais detalhes.';
 
   ctx += '\n\n=== INSTRUÇÕES DE RESPOSTA ===';
   ctx += '\nResponda em português, técnico e acessível. Máximo 3 parágrafos. NUNCA diga que não há dados — use a ferramenta para buscar.';
