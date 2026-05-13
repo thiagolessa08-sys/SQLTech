@@ -821,39 +821,12 @@ function buildSystemPrompt(){
   if(dbContext){
     const c = dbContext;
 
-    // Bases adicionais (mantidas para referência, mas consulta vai ao Sybase)
+    // Bases adicionais — apenas nome e colunas (sem amostra para economizar tokens)
     if(c.bases_adicionais && c.bases_adicionais.length > 0){
       ctx += `\n\n=== BASES DE REFERÊNCIA LOCAL ===`;
-      ctx += '\nAs seguintes bases locais existem, mas prefira consultar o Sybase para dados atualizados:';
       c.bases_adicionais.forEach(b => {
-        ctx += `\n\n--- BASE: "${b.label}" ---`;
-        ctx += `\nTotal de registros: ${(b.registros||0).toLocaleString('pt-BR')}`;
-        ctx += `\nColunas disponíveis: ${(b.colunas||[]).join(', ')}`;
-        if(b.amostra && b.amostra.length > 0){
-          ctx += `\nAmostra de dados (${b.amostra.length} linhas):`;
-          b.amostra.forEach((row, i) => {
-            const entries = Object.entries(row).map(([k,v]) => `${k}: ${v}`).join(' | ');
-            ctx += `\n  [${i+1}] ${entries}`;
-          });
-        }
-        if(b.stats && Object.keys(b.stats).length > 0){
-          ctx += `\nEstatísticas numéricas:`;
-          const grouped = {};
-          Object.entries(b.stats).forEach(([k,v]) => {
-            const [prefix, ...rest] = k.split('__');
-            const col = rest.join('__');
-            if(!grouped[col]) grouped[col] = {};
-            const map = {s:'soma', a:'média', mi:'mínimo', ma:'máximo'};
-            grouped[col][map[prefix]||prefix] = v;
-          });
-          Object.entries(grouped).forEach(([col, s]) => {
-            const parts = Object.entries(s).map(([t,v]) => `${t}=${isNaN(v)?v:Number(v).toLocaleString('pt-BR',{maximumFractionDigits:2})}`).join(', ');
-            ctx += `\n  ${col} → ${parts}`;
-          });
-        }
-        if(b.erro) ctx += `\n  ⚠ Erro ao carregar amostra: ${b.erro}`;
+        ctx += `\n• "${b.label}" — ${(b.registros||0).toLocaleString('pt-BR')} registros | Colunas: ${(b.colunas||[]).join(', ')}`;
       });
-      ctx += '\n\nIMPORTANTE: Use TODOS esses dados nas suas respostas. NÃO diga que os dados não estão disponíveis. Você tem acesso a essas bases completas.';
     }
 
     // Schemas das tabelas principais
@@ -870,8 +843,11 @@ function buildSystemPrompt(){
     ctx += `\nBanco: Sybase IQ 16 | Schema: ${schema} | Acesso: exclusivo via ferramenta query_database.`;
 
     if(dbContext.sybase_tabelas?.length){
-      ctx += `\n\nTABELAS DISPONÍVEIS (${dbContext.sybase_tabelas.length}):`;
-      dbContext.sybase_tabelas.forEach(t => { ctx += `\n  • ${schema}.${t}`; });
+      const n = dbContext.sybase_tabelas.length;
+      ctx += `\n\nO banco possui ${n} tabelas no schema ${schema}.`;
+      ctx += `\nPara descobrir tabelas relevantes, use:`;
+      ctx += `\n  SELECT table_name FROM sys.systable WHERE user_name(creator)='${schema}' AND table_name LIKE '%PALAVRA%' ORDER BY table_name`;
+      ctx += `\nPara listar todas: SELECT table_name FROM sys.systable WHERE user_name(creator)='${schema}' ORDER BY table_name`;
     }
 
     // ── Tabelas IPTU — foco principal ──
