@@ -409,19 +409,38 @@ _ANNOUNCEMENT_PHRASES = [
     'vou checar', 'vou analisar antes', 'primeiro preciso',
 ]
 
+_REFUSAL_PHRASES = [
+    'não há tabelas', 'não tenho tabelas', 'não há dados de despesa',
+    'não há dados de receita', 'contém apenas dados de iptu',
+    'apenas dados de iptu', 'só tenho dados de iptu', 'somente iptu',
+    'não possui tabelas de', 'não estão disponíveis', 'não estão disponíveis neste momento',
+    'seria necessário acesso a', 'não há informações sobre despesa',
+    'não há informações sobre receita', 'banco não contém',
+    'banco de dados não possui', 'não encontrei tabelas de',
+    'não existem tabelas', 'sem acesso a tabelas',
+]
+
 def _is_announcement(content):
     """Detecta se a resposta é um anúncio sem dados reais (modelo travado)."""
     text = ' '.join(blk.get('text', '') for blk in content if blk.get('type') == 'text').strip()
     if not text:
         return False
-    # Termina com ":" — claramente incompleto
     if text.endswith(':'):
         return True
     text_low = text.lower()
-    # Contém frase de anúncio E não tem dados reais (sem gráfico, curto demais)
     has_announcement = any(p in text_low for p in _ANNOUNCEMENT_PHRASES)
     has_data = '[chart]' in text_low or 'r$' in text_low or len(text) > 400
     return has_announcement and not has_data
+
+def _is_refusal_without_query(content, queries_run):
+    """Detecta se o modelo recusou sem executar nenhuma query."""
+    if queries_run:
+        return False  # já rodou queries — recusa legítima
+    text = ' '.join(blk.get('text', '') for blk in content if blk.get('type') == 'text').strip()
+    if not text:
+        return False
+    text_low = text.lower()
+    return any(p in text_low for p in _REFUSAL_PHRASES)
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
@@ -472,8 +491,9 @@ def chat():
     }
 
     queries_run = []
+    last_text_data = None  # salva o último response com texto (fallback anti-vazio)
 
-    for _ in range(6):   # loop agentico — máx 6 iterações
+    for _ in range(8):   # loop agentico — máx 8 iterações
         resp = requests.post("https://api.anthropic.com/v1/messages",
                              headers=hdrs, json=call, timeout=90)
         if resp.status_code != 200:
@@ -482,6 +502,12 @@ def chat():
         data = resp.json()
         stop  = data.get("stop_reason")
         content = data.get("content", [])
+
+        # Guarda último response que tenha texto real (fallback)
+        has_text = any(blk.get('type') == 'text' and blk.get('text', '').strip()
+                       for blk in content)
+        if has_text:
+            last_text_data = data
 
         if stop == "tool_use":
             call["messages"].append({"role": "assistant", "content": content})
@@ -503,16 +529,29 @@ def chat():
                     })
             call["messages"].append({"role": "user", "content": results})
         elif stop == "end_turn" and _is_announcement(content):
-            # Modelo anunciou algo mas não entregou — forçar resposta final
+            # Modelo anunciou algo mas não entregou — forçar execução
             call["messages"].append({"role": "assistant", "content": content})
-            push_msg = "Execute a query e apresente os dados agora." if not queries_run else "Apresente os resultados agora com o gráfico. Não anuncie — entregue direto."
+            push_msg = ("Execute a query e apresente os dados agora." if not queries_run
+                        else "Apresente os resultados agora com o gráfico. Não anuncie — entregue direto.")
             call["messages"].append({"role": "user", "content": push_msg})
+        elif stop == "end_turn" and _is_refusal_without_query(content, queries_run):
+            # Modelo recusou sem tentar — forçar pelo menos um SELECT exploratório
+            call["messages"].append({"role": "assistant", "content": content})
+            call["messages"].append({"role": "user", "content": (
+                "ATENÇÃO: você DEVE executar uma query antes de dizer que não há dados. "
+                "Use SELECT TOP 5 * para verificar se a tabela existe. "
+                "Execute agora e relate o que encontrou."
+            )})
         else:
             if queries_run:
                 data["queries_executed"] = queries_run
             return jsonify(data), resp.status_code
 
-    return jsonify(data), 200
+    # Fallback: retorna último response com texto para evitar "resposta vazia"
+    fallback = last_text_data or data
+    if queries_run:
+        fallback["queries_executed"] = queries_run
+    return jsonify(fallback), 200
 
 @app.route("/api/chat/context")
 def chat_context():
