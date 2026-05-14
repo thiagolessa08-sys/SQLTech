@@ -704,18 +704,18 @@ async function sendMsg() {
       appendMsg('ai', '⚠️ Resposta vazia. Tente reformular a pergunta.');
       history.pop();
     } else {
-      let final = reply;
+      const msgEl = appendMsg('ai', reply);
+      history.push({ role: 'assistant', content: reply });
+      // Badge SQL adicionado ao DOM diretamente — não passa pelo md()
       if (data.queries_executed?.length) {
         const total = data.queries_executed.reduce((s, q) => s + q.linhas, 0);
-        final += `\n\n<span class="sql-badge">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        const badge = document.createElement('div');
+        badge.className = 'sql-badge';
+        badge.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
             <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4.03 3-9 3S3 13.66 3 12M21 5v14c0 1.66-4.03 3-9 3S3 20.66 3 19V5"/>
-          </svg>
-          ${data.queries_executed.length} consulta(s) · ${total.toLocaleString('pt-BR')} linhas
-        </span>`;
+          </svg>${data.queries_executed.length} consulta(s) · ${total.toLocaleString('pt-BR')} linhas`;
+        msgEl.querySelector('.msg-body').appendChild(badge);
       }
-      appendMsg('ai', final);
-      history.push({ role: 'assistant', content: reply });
     }
 
   } catch(e) {
