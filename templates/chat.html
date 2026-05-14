@@ -4,32 +4,39 @@
 
 {% block extra_style %}
 <style>
-/* ── Layout ── */
+/* ── Oculta filter-bar na página de chat ── */
+.filter-bar { display: none !important; }
+main { padding: 0 !important; }
+
+/* ── Layout full-width ── */
 .chat-page {
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 64px);
-  max-width: 860px;
-  margin: 0 auto;
-  padding: 0 20px;
-  gap: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: calc(100vh - 58px);
+  background: var(--bg);
 }
 
 /* ── Header ── */
 .chat-header {
-  padding: 18px 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 28px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
   flex-shrink: 0;
+  gap: 12px;
 }
-.chat-header h1 {
-  font-size: 18px;
+.chat-header-left h1 {
+  font-size: 16px;
   font-weight: 700;
   color: var(--ink);
   letter-spacing: -0.02em;
 }
-.chat-header p {
-  font-size: 12.5px;
+.chat-header-left p {
+  font-size: 11.5px;
   color: var(--ink-3);
-  margin-top: 2px;
+  margin-top: 1px;
 }
 .ctx-chip {
   display: inline-flex;
@@ -38,27 +45,40 @@
   background: var(--green-soft);
   border: 1px solid oklch(0.82 0.08 250);
   color: var(--green-ink);
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
-  padding: 3px 10px;
+  padding: 4px 12px;
   border-radius: 20px;
-  margin-top: 8px;
+  white-space: nowrap;
 }
-.ctx-chip svg { flex-shrink: 0; }
+.chat-clear-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: 1.5px solid var(--line);
+  border-radius: 9px;
+  padding: 5px 12px;
+  font-size: 11.5px;
+  font-family: inherit;
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.chat-clear-btn:hover { border-color: var(--rose); color: var(--rose); }
 
-/* ── Messages area ── */
+/* ── Messages ── */
 .chat-messages {
-  flex: 1;
   overflow-y: auto;
-  padding: 8px 0 16px;
+  padding: 24px 28px 12px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
 }
 .chat-messages::-webkit-scrollbar { width: 5px; }
-.chat-messages::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 4px; }
 
 /* ── Welcome ── */
 .chat-welcome {
@@ -67,86 +87,73 @@
   align-items: center;
   justify-content: center;
   gap: 16px;
-  flex: 1;
-  padding: 40px 20px;
+  padding: 60px 20px;
   text-align: center;
 }
-.chat-welcome-icon {
-  width: 56px; height: 56px;
+.welcome-icon {
+  width: 60px; height: 60px;
   background: var(--green-soft);
   border: 1.5px solid oklch(0.82 0.10 250);
-  border-radius: 18px;
+  border-radius: 20px;
   display: grid; place-items: center;
   color: var(--green);
 }
-.chat-welcome h2 {
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--ink);
-  letter-spacing: -0.02em;
-}
-.chat-welcome p {
-  font-size: 13px;
-  color: var(--ink-3);
-  max-width: 380px;
-  line-height: 1.6;
-}
+.chat-welcome h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.03em; color: var(--ink); }
+.chat-welcome p { font-size: 13px; color: var(--ink-3); max-width: 420px; line-height: 1.6; }
 .suggestions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   justify-content: center;
+  max-width: 580px;
   margin-top: 4px;
 }
 .sug-btn {
   background: var(--surface);
   border: 1.5px solid var(--line);
-  border-radius: 20px;
-  padding: 7px 14px;
+  border-radius: 22px;
+  padding: 7px 16px;
   font-size: 12.5px;
   font-family: inherit;
   color: var(--ink-2);
   cursor: pointer;
-  transition: border-color .15s, color .15s, background .15s;
+  transition: all .15s;
 }
-.sug-btn:hover {
-  border-color: var(--green);
-  color: var(--green-ink);
-  background: var(--green-soft);
-}
+.sug-btn:hover { border-color: var(--green); color: var(--green-ink); background: var(--green-soft); }
 
-/* ── Message bubbles ── */
+/* ── Bubbles ── */
 .msg {
   display: flex;
-  gap: 10px;
+  gap: 11px;
   align-items: flex-start;
-  max-width: 82%;
   animation: msgIn .22s ease-out;
 }
-@keyframes msgIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
-.msg.user { align-self: flex-end; flex-direction: row-reverse; }
-.msg.ai   { align-self: flex-start; }
+@keyframes msgIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
+.msg.user { flex-direction: row-reverse; }
+.msg.ai   { max-width: 88%; }
+.msg.user { align-self: flex-end; max-width: 72%; }
 
 .msg-av {
-  width: 32px; height: 32px;
+  width: 33px; height: 33px;
   border-radius: 10px;
   display: grid; place-items: center;
   font-size: 10px;
   font-weight: 700;
   flex-shrink: 0;
-  letter-spacing: 0;
 }
 .msg.ai   .msg-av { background: var(--green-soft); color: var(--green-ink); border: 1px solid oklch(0.82 0.10 250); }
 .msg.user .msg-av { background: var(--green); color: #fff; }
 
-.msg-body { display: flex; flex-direction: column; gap: 3px; }
+.msg-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .msg.user .msg-body { align-items: flex-end; }
 
 .msg-bubble {
-  padding: 10px 15px;
+  padding: 11px 16px;
   border-radius: 16px;
   font-size: 13.5px;
-  line-height: 1.7;
+  line-height: 1.75;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 .msg.ai .msg-bubble {
   background: var(--surface);
@@ -159,19 +166,15 @@
   color: #fff;
   border-top-right-radius: 4px;
 }
-.msg-time {
-  font-size: 10px;
-  color: var(--ink-3);
-  padding: 0 3px;
-}
+.msg-time { font-size: 10px; color: var(--ink-3); padding: 0 2px; }
 
-/* Markdown inside bubble */
-.msg-bubble p { margin-bottom: 6px; }
+/* Markdown */
+.msg-bubble p { margin-bottom: 7px; }
 .msg-bubble p:last-child { margin-bottom: 0; }
 .msg-bubble strong { font-weight: 700; }
 .msg-bubble em { font-style: italic; }
-.msg-bubble ul, .msg-bubble ol { padding-left: 18px; margin-bottom: 6px; }
-.msg-bubble li { margin-bottom: 3px; }
+.msg-bubble ul, .msg-bubble ol { padding-left: 20px; margin-bottom: 7px; }
+.msg-bubble li { margin-bottom: 4px; }
 .msg-bubble code {
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
@@ -179,21 +182,10 @@
   border-radius: 4px;
   padding: 1px 5px;
 }
-.msg.user .msg-bubble code { background: rgba(255,255,255,.2); }
-.msg-bubble pre {
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 10px 12px;
-  overflow-x: auto;
-  margin: 6px 0;
-}
-.msg-bubble pre code { background: none; padding: 0; }
-.msg-bubble table { border-collapse: collapse; width: 100%; font-size: 12.5px; margin: 8px 0; }
-.msg-bubble th, .msg-bubble td { border: 1px solid var(--line); padding: 5px 10px; text-align: left; }
-.msg-bubble th { background: var(--surface-2); font-weight: 600; }
+.msg.user .msg-bubble code { background: rgba(255,255,255,.25); }
+.msg-bubble h3 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
 
-/* Typing indicator */
+/* Typing */
 .msg.typing .msg-bubble {
   padding: 9px 14px;
   display: flex;
@@ -202,8 +194,7 @@
 }
 .typing-dots { display: inline-flex; gap: 4px; align-items: center; }
 .typing-dots span {
-  width: 6px; height: 6px;
-  border-radius: 50%;
+  width: 6px; height: 6px; border-radius: 50%;
   background: oklch(0.65 0.18 250);
   animation: tdot 1.2s infinite;
 }
@@ -211,31 +202,127 @@
 .typing-dots span:nth-child(3) { animation-delay: .4s; }
 @keyframes tdot { 0%,80%,100%{ transform:translateY(0); } 40%{ transform:translateY(-5px); } }
 .typing-lbl { font-size: 12px; color: var(--ink-3); font-style: italic; }
-.thinking-svg {
-  color: oklch(0.60 0.18 250);
-  animation: tpulse 1.4s ease-in-out infinite;
-  flex-shrink: 0;
-}
+.thinking-svg { color: oklch(0.60 0.18 250); animation: tpulse 1.4s ease-in-out infinite; flex-shrink:0; }
 @keyframes tpulse { 0%,100%{ opacity:.5; } 50%{ opacity:1; } }
 
-/* Chart inside bubble */
-.chart-wrap {
+/* ── Data card (gráfico + tabela) ── */
+.data-card {
   width: 100%;
-  max-width: 520px;
+  max-width: 620px;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 14px 16px 10px;
-  margin-top: 8px;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-top: 10px;
 }
-.chart-title {
-  font-size: 12px;
+.data-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 16px 10px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.data-card-title {
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--ink-2);
-  margin-bottom: 10px;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.view-toggle {
+  display: flex;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.view-toggle button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 11px;
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-3);
+  transition: background .15s, color .15s;
   letter-spacing: .01em;
 }
-canvas.chart-canvas { width: 100% !important; }
+.view-toggle button.active {
+  background: var(--surface);
+  color: var(--green-ink);
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+.data-card-body { padding: 14px 16px 12px; }
+.chart-view canvas { width: 100% !important; }
+.table-view { display: none; overflow-x: auto; }
+.table-view.show { display: block; }
+.chart-view.hide { display: none; }
+
+/* Data table */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.data-table thead tr {
+  background: var(--surface-2);
+  border-bottom: 2px solid var(--line);
+}
+.data-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-weight: 700;
+  color: var(--ink-2);
+  font-size: 11px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.data-table th.num { text-align: right; }
+.data-table td {
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  vertical-align: middle;
+}
+.data-table td.num {
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--green-ink);
+}
+.data-table tbody tr:last-child td { border-bottom: none; }
+.data-table tbody tr:hover { background: var(--surface-2); }
+.data-table tbody tr:nth-child(even) { background: oklch(from var(--surface-2) l c h / .5); }
+
+/* rank badge */
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px; height: 20px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--surface-2);
+  color: var(--ink-3);
+  border: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.rank-badge.gold   { background: oklch(0.88 0.12 75); color: oklch(0.42 0.15 70); border-color: oklch(0.80 0.14 75); }
+.rank-badge.silver { background: oklch(0.90 0.02 250); color: oklch(0.45 0.05 250); border-color: oklch(0.82 0.04 250); }
+.rank-badge.bronze { background: oklch(0.88 0.07 55); color: oklch(0.42 0.12 50); border-color: oklch(0.80 0.10 55); }
+
+.table-row-label { display: flex; align-items: center; gap: 8px; }
 
 /* SQL badge */
 .sql-badge {
@@ -247,35 +334,38 @@ canvas.chart-canvas { width: 100% !important; }
   background: var(--surface-2);
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 3px 9px;
-  margin-top: 6px;
+  padding: 3px 10px;
+  margin-top: 4px;
 }
 
 /* ── Input bar ── */
 .chat-input-area {
-  padding: 12px 0 16px;
-  flex-shrink: 0;
+  padding: 14px 28px 18px;
+  background: var(--surface);
   border-top: 1px solid var(--line);
+  flex-shrink: 0;
 }
 .input-row {
   display: flex;
   gap: 8px;
   align-items: flex-end;
+  max-width: 860px;
+  margin: 0 auto;
 }
 .input-wrap {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: var(--surface);
+  background: var(--bg);
   border: 1.5px solid var(--line);
   border-radius: 14px;
-  padding: 10px 14px;
+  padding: 10px 16px;
   transition: border-color .2s, box-shadow .2s;
 }
 .input-wrap:focus-within {
   border-color: oklch(0.60 0.18 250);
   box-shadow: 0 0 0 3px oklch(0.60 0.18 250 / .10);
+  background: var(--surface);
 }
 .chat-input {
   flex: 1;
@@ -293,10 +383,10 @@ canvas.chart-canvas { width: 100% !important; }
 }
 .chat-input::placeholder { color: var(--ink-3); }
 .send-btn {
-  width: 42px; height: 42px;
+  width: 44px; height: 44px;
   background: var(--green);
   border: none;
-  border-radius: 12px;
+  border-radius: 13px;
   display: grid; place-items: center;
   cursor: pointer;
   color: #fff;
@@ -319,7 +409,7 @@ canvas.chart-canvas { width: 100% !important; }
   font-size: 11px;
   color: var(--ink-3);
   text-align: center;
-  margin-top: 7px;
+  margin-top: 8px;
 }
 </style>
 {% endblock %}
@@ -329,27 +419,39 @@ canvas.chart-canvas { width: 100% !important; }
 
   <!-- Header -->
   <div class="chat-header">
-    <h1>Chat IA — Finanças Municipais</h1>
-    <p>Faça perguntas em linguagem natural sobre receitas, despesas, IPTU e orçamento.</p>
-    <div id="ctxBar"></div>
+    <div class="chat-header-left">
+      <h1>Chat IA</h1>
+      <p>Consulta o banco Sybase IQ em tempo real</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div id="ctxBar"></div>
+      <button class="chat-clear-btn" onclick="clearChat()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>
+        </svg>
+        Limpar
+      </button>
+    </div>
   </div>
 
   <!-- Messages -->
   <div class="chat-messages" id="chatArea">
     <div class="chat-welcome" id="chatWelcome">
-      <div class="chat-welcome-icon">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <div class="welcome-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.3 4.7-3.3 6l-.7.5V17a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-1.5l-.7-.5A7 7 0 0 1 12 2z"/>
           <path d="M9 17v1a3 3 0 0 0 6 0v-1"/>
         </svg>
       </div>
       <h2>Como posso ajudar?</h2>
-      <p>Consulto o banco Sybase IQ em tempo real e respondo com dados e gráficos.</p>
+      <p>Pergunte sobre receitas, despesas, IPTU, secretarias ou qualquer dado financeiro da prefeitura.</p>
       <div class="suggestions">
-        <button class="sug-btn" onclick="send('Qual a receita total arrecadada em 2025?')">Receita total 2025</button>
-        <button class="sug-btn" onclick="send('Quais as maiores despesas por secretaria?')">Despesas por secretaria</button>
-        <button class="sug-btn" onclick="send('Mostre a inadimplência de IPTU por bairro')">Inadimplência IPTU</button>
-        <button class="sug-btn" onclick="send('Compare receita e despesa dos últimos meses')">Receita vs Despesa</button>
+        <button class="sug-btn" onclick="send('Qual a receita total arrecadada em 2025?')">📊 Receita total 2025</button>
+        <button class="sug-btn" onclick="send('Quais as maiores despesas por secretaria em 2025?')">🏛️ Despesas por secretaria</button>
+        <button class="sug-btn" onclick="send('Mostre a inadimplência de IPTU por bairro')">🏠 Inadimplência IPTU</button>
+        <button class="sug-btn" onclick="send('Compare receita e despesa mês a mês em 2025')">📈 Receita vs Despesa</button>
+        <button class="sug-btn" onclick="send('Top 10 contribuintes com maior IPTU lançado')">👤 Top contribuintes</button>
+        <button class="sug-btn" onclick="send('Qual a execução orçamentária de 2025?')">📋 Execução orçamentária</button>
       </div>
     </div>
   </div>
@@ -358,7 +460,8 @@ canvas.chart-canvas { width: 100% !important; }
   <div class="chat-input-area">
     <div class="input-row">
       <div class="input-wrap">
-        <textarea id="chatInput" class="chat-input" rows="1" placeholder="Pergunte sobre receitas, despesas, IPTU..."
+        <textarea id="chatInput" class="chat-input" rows="1"
+          placeholder="Pergunte sobre receitas, despesas, IPTU, secretarias..."
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg();}"
           oninput="autoResize(this)"></textarea>
       </div>
@@ -385,172 +488,267 @@ canvas.chart-canvas { width: 100% !important; }
 {% block page_script %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-// ── State ────────────────────────────────────────────────────────────────
+// ── State ─────────────────────────────────────────────────────────────────
 let history = [];
-let busy = false;
-let dbCtx = null;
+let busy    = false;
+let dbCtx   = null;
 
-// ── Init ─────────────────────────────────────────────────────────────────
-(async function init() {
+// ── Init ──────────────────────────────────────────────────────────────────
+(async () => {
   try {
     dbCtx = await fetch('/api/chat/context').then(r => r.json());
     renderCtxBar();
-  } catch(e) {
-    console.warn('Contexto não disponível:', e);
-  }
+  } catch(e) { console.warn('Contexto:', e); }
 })();
 
 function renderCtxBar() {
-  const bar = document.getElementById('ctxBar');
-  if (!dbCtx) return;
-  bar.innerHTML = '';
-  if (dbCtx.sybase_disponivel) {
-    bar.innerHTML = `<span class="ctx-chip">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4.03 3-9 3S3 13.66 3 12M21 5v14c0 1.66-4.03 3-9 3S3 20.66 3 19V5"/>
-      </svg>
-      Sybase IQ — ${dbCtx.sybase_schema}
-    </span>`;
-  }
+  if (!dbCtx?.sybase_disponivel) return;
+  document.getElementById('ctxBar').innerHTML = `<span class="ctx-chip">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4.03 3-9 3S3 13.66 3 12M21 5v14c0 1.66-4.03 3-9 3S3 20.66 3 19V5"/>
+    </svg>
+    Sybase IQ · ${dbCtx.sybase_schema}
+  </span>`;
 }
 
-// ── Auto-resize textarea ──────────────────────────────────────────────────
+function clearChat() {
+  history = [];
+  const area = document.getElementById('chatArea');
+  area.innerHTML = '';
+  // Recriar welcome
+  const w = document.createElement('div');
+  w.className = 'chat-welcome';
+  w.id = 'chatWelcome';
+  w.innerHTML = `<div class="welcome-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.3 4.7-3.3 6l-.7.5V17a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-1.5l-.7-.5A7 7 0 0 1 12 2z"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg></div>
+    <h2>Como posso ajudar?</h2><p>Pergunte sobre receitas, despesas, IPTU ou qualquer dado financeiro.</p>`;
+  area.appendChild(w);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
 function autoResize(el) {
   el.style.height = '22px';
   el.style.height = Math.min(el.scrollHeight, 120) + 'px';
 }
-
-// ── Time helper ───────────────────────────────────────────────────────────
 function now() {
-  return new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
 }
+function fmtNum(v) {
+  const n = Math.abs(+v);
+  if (n >= 1e9) return 'R$ ' + (+v/1e9).toFixed(2).replace('.',',') + ' bi';
+  if (n >= 1e6) return 'R$ ' + (+v/1e6).toFixed(1).replace('.',',') + ' M';
+  if (n >= 1e3) return 'R$ ' + Math.round(+v).toLocaleString('pt-BR');
+  return (+v).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+}
+function isNumeric(v) { return !isNaN(parseFloat(v)) && isFinite(v); }
 
-// ── Markdown renderer (lightweight) ───────────────────────────────────────
+// ── Markdown renderer ─────────────────────────────────────────────────────
 function md(text) {
   return text
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
     .replace(/\*(.+?)\*/g,'<em>$1</em>')
     .replace(/`([^`]+)`/g,'<code>$1</code>')
-    .replace(/^#{1,3}\s+(.+)$/gm,'<strong>$1</strong>')
+    .replace(/^#{1,3}\s+(.+)$/gm,'<strong style="font-size:14px">$1</strong>')
     .replace(/^\s*[-*]\s+(.+)$/gm,'<li>$1</li>')
-    .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
-    .replace(/\n\n/g,'</p><p>')
-    .replace(/^(.)/,'<p>$1')
-    .replace(/(.)$/,'$1</p>')
-    .replace(/<\/p><p><ul>/g,'<ul>')
-    .replace(/<\/ul><\/p>/g,'</ul>');
+    .replace(/(<li>[\s\S]*?<\/li>)/g,'<ul>$1</ul>')
+    .replace(/\n\n+/g,'</p><p>')
+    .replace(/^(.)/,'<p>$1').replace(/(.)$/,'$1</p>');
 }
 
-// ── Chart renderer ────────────────────────────────────────────────────────
-const COLORS = [
-  'oklch(0.52 0.19 250)','oklch(0.68 0.17 160)','oklch(0.72 0.15 60)',
-  'oklch(0.65 0.18 30)', 'oklch(0.60 0.16 290)','oklch(0.75 0.14 190)',
+// ── Chart colors ──────────────────────────────────────────────────────────
+const C = [
+  'oklch(0.52 0.19 250)','oklch(0.68 0.17 160)','oklch(0.72 0.15 65)',
+  'oklch(0.64 0.18 30)', 'oklch(0.60 0.16 290)','oklch(0.75 0.14 190)',
+  'oklch(0.78 0.12 110)','oklch(0.55 0.15 340)',
 ];
+
+// ── Render chart ──────────────────────────────────────────────────────────
+let seq = 0;
+function makeDataCard(cfg) {
+  const id = 'ch_' + (++seq);
+  const tbId = 'tb_' + seq;
+  const cardId = 'dc_' + seq;
+
+  // Build table HTML
+  const tableHtml = buildTable(cfg, tbId);
+
+  return { id, tbId, cardId, html: `
+    <div class="data-card" id="${cardId}">
+      <div class="data-card-head">
+        <span class="data-card-title">${cfg.title || 'Resultado'}</span>
+        <div class="view-toggle">
+          <button class="active" onclick="switchView('${cardId}','chart')" id="vbtn_chart_${cardId}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/></svg>
+            Gráfico
+          </button>
+          <button onclick="switchView('${cardId}','table')" id="vbtn_table_${cardId}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>
+            Tabela
+          </button>
+        </div>
+      </div>
+      <div class="data-card-body">
+        <div class="chart-view" id="cv_${cardId}">
+          <canvas id="${id}" height="240"></canvas>
+        </div>
+        <div class="table-view" id="tv_${cardId}">
+          ${tableHtml}
+        </div>
+      </div>
+    </div>`
+  };
+}
+
+function switchView(cardId, mode) {
+  const cv = document.getElementById('cv_' + cardId);
+  const tv = document.getElementById('tv_' + cardId);
+  const btnC = document.getElementById('vbtn_chart_' + cardId);
+  const btnT = document.getElementById('vbtn_table_' + cardId);
+  if (mode === 'chart') {
+    cv.classList.remove('hide'); tv.classList.remove('show');
+    btnC.classList.add('active'); btnT.classList.remove('active');
+  } else {
+    cv.classList.add('hide'); tv.classList.add('show');
+    btnC.classList.remove('active'); btnT.classList.add('active');
+  }
+}
+
+function buildTable(cfg, tbId) {
+  const type = cfg.type || 'bar';
+  const isMulti = ['multiBar','stackedBar'].includes(type);
+
+  if (isMulti && cfg.datasets) {
+    // Multi-series table
+    const headers = ['#', 'Categoria', ...cfg.datasets.map(d => d.label)];
+    const rows = (cfg.labels || []).map((lbl, i) => ({
+      label: lbl,
+      values: cfg.datasets.map(d => d.values[i])
+    }));
+    const rankClass = i => i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    return `<table class="data-table" id="${tbId}">
+      <thead><tr>${headers.map((h,i) => `<th${i>=2?' class="num"':''}>${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map((r,i) => `<tr>
+        <td><span class="rank-badge ${rankClass(i)}">${i+1}</span></td>
+        <td>${r.label}</td>
+        ${r.values.map(v => `<td class="num">${isNumeric(v) ? fmtNum(v) : v}</td>`).join('')}
+      </tr>`).join('')}</tbody>
+    </table>`;
+  }
+
+  // Single-series
+  const labels = cfg.labels || [];
+  const values = cfg.values || [];
+  const col = cfg.label || 'Valor';
+  const rankClass = i => i===0?'gold':i===1?'silver':i===2?'bronze':'';
+  return `<table class="data-table" id="${tbId}">
+    <thead><tr><th>#</th><th>Categoria</th><th class="num">${col}</th></tr></thead>
+    <tbody>${labels.map((lbl,i) => `<tr>
+      <td><span class="rank-badge ${rankClass(i)}">${i+1}</span></td>
+      <td><div class="table-row-label">${lbl}</div></td>
+      <td class="num">${isNumeric(values[i]) ? fmtNum(values[i]) : values[i]}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
 
 function renderChart(id, cfg) {
   const canvas = document.getElementById(id);
   if (!canvas) return;
   const ctx2 = canvas.getContext('2d');
-  const fmtVal = v => {
-    const n = Math.abs(v);
-    if (n >= 1e9) return 'R$ ' + (v/1e9).toFixed(1) + 'B';
-    if (n >= 1e6) return 'R$ ' + (v/1e6).toFixed(1) + 'M';
-    if (n >= 1e3) return 'R$ ' + (v/1e3).toFixed(0) + 'K';
-    return v.toLocaleString('pt-BR');
-  };
-  const base = {
+  const type = cfg.type || 'bar';
+
+  const baseOpts = {
     responsive: true,
     plugins: {
       legend: { display: false },
-      tooltip: { callbacks: { label: c => fmtVal(c.raw) } }
+      tooltip: { callbacks: { label: c => fmtNum(c.raw) } }
     },
     scales: {
-      x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#888' } },
-      y: { grid: { color: '#e5e7eb' }, ticks: { font: { size: 11 }, color: '#888', callback: fmtVal } }
+      x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#888', maxRotation: 35 } },
+      y: { grid: { color: 'rgba(0,0,0,.06)' }, ticks: { font: { size: 11 }, color: '#888', callback: v => fmtNum(v) }, border: { display: false } }
     }
   };
 
-  const type = cfg.type;
   if (type === 'doughnut' || type === 'pie') {
-    new Chart(ctx2, {
-      type,
-      data: { labels: cfg.labels, datasets: [{ data: cfg.values, backgroundColor: COLORS, borderWidth: 0 }] },
-      options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } }, tooltip: { callbacks: { label: c => `${c.label}: ${fmtVal(c.raw)}` } } } }
-    });
+    new Chart(ctx2, { type, data: {
+      labels: cfg.labels,
+      datasets: [{ data: cfg.values, backgroundColor: C, borderWidth: 2, borderColor: '#fff' }]
+    }, options: { responsive: true, plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12, padding: 12 } },
+      tooltip: { callbacks: { label: c => `${c.label}: ${fmtNum(c.raw)}` } }
+    }}});
     return;
   }
   if (type === 'horizontalBar') {
-    new Chart(ctx2, {
-      type: 'bar',
-      data: { labels: cfg.labels, datasets: [{ data: cfg.values, backgroundColor: COLORS[0], borderRadius: 5, label: cfg.label||'' }] },
-      options: { ...base, indexAxis: 'y', plugins: { ...base.plugins, legend: { display: false } },
-        scales: { x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, callback: fmtVal } }, y: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#888' } } } }
-    });
+    new Chart(ctx2, { type: 'bar', data: {
+      labels: cfg.labels,
+      datasets: [{ data: cfg.values, backgroundColor: C[0], borderRadius: 5, label: cfg.label||'' }]
+    }, options: { ...baseOpts, indexAxis: 'y',
+      plugins: { ...baseOpts.plugins, legend: { display: false } },
+      scales: {
+        x: { ...baseOpts.scales.x, ticks: { ...baseOpts.scales.x.ticks, callback: v => fmtNum(v) } },
+        y: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#888' }, border: { display: false } }
+      }
+    }});
     return;
   }
   if (type === 'multiBar') {
-    new Chart(ctx2, {
-      type: 'bar',
-      data: { labels: cfg.labels, datasets: (cfg.datasets||[]).map((ds,i) => ({ label: ds.label, data: ds.values, backgroundColor: COLORS[i]||COLORS[0], borderRadius: 4 })) },
-      options: { ...base, plugins: { ...base.plugins, legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 12 } } } }
-    });
+    new Chart(ctx2, { type: 'bar', data: {
+      labels: cfg.labels,
+      datasets: (cfg.datasets||[]).map((ds,i) => ({ label: ds.label, data: ds.values, backgroundColor: C[i]||C[0], borderRadius: 4 }))
+    }, options: { ...baseOpts, plugins: { ...baseOpts.plugins, legend: { display: true, position: 'top', labels: { font:{ size:11 }, boxWidth:12 } } } }});
     return;
   }
   if (type === 'stackedBar') {
-    new Chart(ctx2, {
-      type: 'bar',
-      data: { labels: cfg.labels, datasets: (cfg.datasets||[]).map((ds,i) => ({ label: ds.label, data: ds.values, backgroundColor: COLORS[i]||COLORS[0] })) },
-      options: { ...base, plugins: { ...base.plugins, legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 12 } } },
-        scales: { ...base.scales, x: { ...base.scales.x, stacked: true }, y: { ...base.scales.y, stacked: true } } }
-    });
+    new Chart(ctx2, { type: 'bar', data: {
+      labels: cfg.labels,
+      datasets: (cfg.datasets||[]).map((ds,i) => ({ label: ds.label, data: ds.values, backgroundColor: C[i]||C[0] }))
+    }, options: { ...baseOpts,
+      plugins: { ...baseOpts.plugins, legend: { display: true, position: 'top', labels: { font:{ size:11 }, boxWidth:12 } } },
+      scales: { ...baseOpts.scales, x: { ...baseOpts.scales.x, stacked: true }, y: { ...baseOpts.scales.y, stacked: true } }
+    }});
     return;
   }
   if (type === 'line' || type === 'area') {
     const fill = type === 'area';
-    new Chart(ctx2, {
-      type: 'line',
-      data: { labels: cfg.labels, datasets: [{ data: cfg.values, borderColor: COLORS[0], backgroundColor: fill ? 'oklch(0.52 0.19 250 / .12)' : 'transparent',
-        fill, tension: 0.35, pointRadius: 4, pointBackgroundColor: COLORS[0], label: cfg.label||'' }] },
-      options: base
-    });
+    new Chart(ctx2, { type: 'line', data: {
+      labels: cfg.labels,
+      datasets: [{ data: cfg.values, borderColor: C[0], backgroundColor: fill ? C[0].replace(')','/0.12)') : 'transparent',
+        fill, tension: 0.35, pointRadius: 4, pointBackgroundColor: C[0], label: cfg.label||'' }]
+    }, options: baseOpts });
     return;
   }
-  // default: bar
-  new Chart(ctx2, {
-    type: 'bar',
-    data: { labels: cfg.labels, datasets: [{ data: cfg.values, backgroundColor: COLORS, borderRadius: 6, label: cfg.label||'' }] },
-    options: base
-  });
+  // default bar
+  new Chart(ctx2, { type: 'bar', data: {
+    labels: cfg.labels,
+    datasets: [{ data: cfg.values, backgroundColor: cfg.labels?.length === 1 ? C[0] : C, borderRadius: 7, label: cfg.label||'' }]
+  }, options: baseOpts });
 }
 
-// ── Parse bubble content (extract [CHART]...[/CHART]) ─────────────────────
-let chartSeq = 0;
+// ── Parse bubble (extract [CHART]...[/CHART]) ─────────────────────────────
 function parseBubble(text) {
-  const charts = [];
+  const cards = [];
   const html = text.replace(/\[CHART\]([\s\S]*?)\[\/CHART\]/gi, (_, raw) => {
     try {
       const cfg = JSON.parse(raw.trim());
-      const id = 'chart_' + (++chartSeq);
-      const h = cfg.title ? `<div class="chart-title">${cfg.title}</div>` : '';
-      charts.push({ id, cfg });
-      return `<div class="chart-wrap">${h}<canvas class="chart-canvas" id="${id}" height="220"></canvas></div>`;
+      const card = makeDataCard(cfg);
+      cards.push(card);
+      return card.html;
     } catch(e) { return ''; }
   });
-  return { html: md(html), charts };
+  return { html: md(html), cards };
 }
 
 // ── Append message ────────────────────────────────────────────────────────
 function appendMsg(role, text, typing = false) {
-  const welcome = document.getElementById('chatWelcome');
-  if (welcome) welcome.remove();
-
+  document.getElementById('chatWelcome')?.remove();
   const area = document.getElementById('chatArea');
   const wrap = document.createElement('div');
   wrap.className = `msg ${role}${typing ? ' typing' : ''}`;
   if (typing) wrap.id = 'typingMsg';
 
-  let bubbleHtml, pendingCharts = [];
+  let bubbleHtml = '';
+  let pendingCards = [];
+
   if (typing) {
     bubbleHtml = `
       <svg class="thinking-svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -562,7 +760,7 @@ function appendMsg(role, text, typing = false) {
   } else if (role === 'ai') {
     const parsed = parseBubble(text);
     bubbleHtml = parsed.html;
-    pendingCharts = parsed.charts;
+    pendingCards = parsed.cards;
   } else {
     bubbleHtml = md(text);
   }
@@ -576,9 +774,93 @@ function appendMsg(role, text, typing = false) {
 
   area.appendChild(wrap);
 
-  if (pendingCharts.length) {
+  if (pendingCards.length) {
     requestAnimationFrame(() => {
-      pendingCharts.forEach(c => renderChart(c.id, c.cfg));
+      pendingCards.forEach(c => renderChart(c.id, JSON.parse(
+        document.getElementById(c.cardId)?.dataset?.cfg || 'null'
+      ) || c));
+      scrollEnd();
+    });
+    // Store cfg in DOM
+    pendingCards.forEach(c => {
+      const el = document.getElementById(c.cardId);
+      if (el) el.dataset.cfg = JSON.stringify(c.origCfg || {});
+    });
+  } else {
+    scrollEnd();
+  }
+  return wrap;
+}
+
+// Patch makeDataCard to store origCfg
+const _makeOrig = makeDataCard;
+function makeDataCard(cfg) {
+  const result = _makeOrig(cfg);
+  result.origCfg = cfg;
+  return result;
+}
+
+// Override parseBubble to pass cfg properly
+function parseBubble(text) {
+  const cards = [];
+  const html = text.replace(/\[CHART\]([\s\S]*?)\[\/CHART\]/gi, (_, raw) => {
+    try {
+      const cfg = JSON.parse(raw.trim());
+      const card = makeDataCard(cfg);
+      cards.push(card);
+      return card.html;
+    } catch(e) { return ''; }
+  });
+  return { html: md(html), cards };
+}
+
+// Better appendMsg with correct chart rendering
+function appendMsg(role, text, typing = false) {
+  document.getElementById('chatWelcome')?.remove();
+  const area = document.getElementById('chatArea');
+  const wrap = document.createElement('div');
+  wrap.className = `msg ${role}${typing ? ' typing' : ''}`;
+  if (typing) wrap.id = 'typingMsg';
+
+  let bubbleHtml = '';
+  let pendingRenders = [];
+
+  if (typing) {
+    bubbleHtml = `
+      <svg class="thinking-svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.3 4.7-3.3 6l-.7.5V17a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-1.5l-.7-.5A7 7 0 0 1 12 2z"/>
+        <path d="M9 17v1a3 3 0 0 0 6 0v-1"/>
+      </svg>
+      <div class="typing-dots"><span></span><span></span><span></span></div>
+      <span class="typing-lbl">Pensando...</span>`;
+  } else if (role === 'ai') {
+    const cfgs = [];
+    const htmlText = text.replace(/\[CHART\]([\s\S]*?)\[\/CHART\]/gi, (_, raw) => {
+      try {
+        const cfg = JSON.parse(raw.trim());
+        const card = makeDataCard(cfg);
+        cfgs.push({ id: card.id, cfg });
+        return card.html;
+      } catch(e) { return ''; }
+    });
+    bubbleHtml = md(htmlText);
+    pendingRenders = cfgs;
+  } else {
+    bubbleHtml = md(text);
+  }
+
+  wrap.innerHTML = `
+    <div class="msg-av">${role === 'user' ? 'PM' : 'IA'}</div>
+    <div class="msg-body">
+      <div class="msg-bubble">${bubbleHtml}</div>
+      ${!typing ? `<div class="msg-time">${now()}</div>` : ''}
+    </div>`;
+
+  area.appendChild(wrap);
+
+  if (pendingRenders.length) {
+    requestAnimationFrame(() => {
+      pendingRenders.forEach(r => renderChart(r.id, r.cfg));
       scrollEnd();
     });
   } else {
@@ -588,8 +870,8 @@ function appendMsg(role, text, typing = false) {
 }
 
 function scrollEnd() {
-  const area = document.getElementById('chatArea');
-  area.scrollTop = area.scrollHeight;
+  const a = document.getElementById('chatArea');
+  a.scrollTop = a.scrollHeight;
 }
 
 // ── Build system prompt ───────────────────────────────────────────────────
@@ -597,55 +879,44 @@ function buildPrompt() {
   const schema = dbCtx?.sybase_schema || 'pref_aruja_sp';
   let p = `Você é analista de finanças públicas municipais. Acessa o banco Sybase IQ 16 via ferramenta query_database.`;
 
-  p += `\n\n⛔ REGRA ABSOLUTA: Antes de dizer "não há dados" ou "tabela não existe", execute SELECT TOP 5 * FROM ${schema}.NOME_TABELA para verificar. NUNCA pergunte ao usuário qual é o nome da tabela — descubra via query no catálogo do sistema.`;
+  p += `\n\n⛔ REGRA: Antes de dizer "tabela não existe", execute SELECT TOP 5 * FROM ${schema}.NOME_TABELA. NUNCA pergunte ao usuário qual tabela usar.`;
+  p += `\n\nDescobrir tabelas: SELECT TOP 200 st.table_name FROM sys.systable st JOIN sys.sysuser su ON st.creator=su.user_id WHERE su.user_name='${schema}' AND st.table_type='BASE' ORDER BY st.table_name`;
 
-  p += `\n\nPara descobrir tabelas disponíveis execute:\nSELECT TOP 200 st.table_name FROM sys.systable st JOIN sys.sysuser su ON st.creator = su.user_id WHERE su.user_name = '${schema}' AND st.table_type = 'BASE' ORDER BY st.table_name`;
+  p += `\n\n🚨 NOME/CONTRIBUINTE/CPF: Use SEMPRE ${schema}.PREFEITURA_IPTU_LANCADO e/ou ${schema}.PREFEITURA_IPTU_PAGO.`;
 
-  p += `\n\n🚨 NOME / CONTRIBUINTE / CPF: Sempre consulte ${schema}.PREFEITURA_IPTU_LANCADO e/ou ${schema}.PREFEITURA_IPTU_PAGO. NUNCA use tabelas de receita/despesa para buscar contribuintes nominais.`;
-
-  // Lista real de tabelas
   const tabs = dbCtx?.sybase_tabelas || [];
-  if (tabs.length) {
-    p += `\n\n📋 TABELAS EXISTENTES (${tabs.length}): ${tabs.join(', ')}`;
-    p += `\nUse SOMENTE essas tabelas.`;
-  }
+  if (tabs.length) p += `\n\n📋 TABELAS (${tabs.length}): ${tabs.join(', ')}\nUse SOMENTE essas.`;
 
-  // Bases adicionais
   if (dbCtx?.bases_adicionais?.length) {
     p += `\n\n=== BASES LOCAIS ===`;
-    dbCtx.bases_adicionais.forEach(b => {
-      p += `\n• "${b.label}" — ${(b.registros||0).toLocaleString('pt-BR')} registros | ${(b.colunas||[]).join(', ')}`;
-    });
+    dbCtx.bases_adicionais.forEach(b =>
+      p += `\n• "${b.label}" — ${(b.registros||0).toLocaleString('pt-BR')} registros | ${(b.colunas||[]).join(', ')}`
+    );
   }
 
-  p += `\n\n=== SYBASE IQ 16 — SINTAXE ===`;
-  p += `\n• TOP N (nunca LIMIT) | YEAR(col), MONTH(col) | ISNULL(col,0) | LIST(col,',')`;
-  p += `\n• Strings: CASE-SENSITIVE — nunca UPPER()/LOWER()`;
-  p += `\n• Ano corrente orçamento: NO_ANO = 2025`;
-  p += `\n• Secretarias: CD_ORGAO = '1' AND DS_UO <> DS_ORGAO (CD_ORGAO é VARCHAR)`;
-  p += `\n• Receita: filtrar CD_TIPO_NATUREZA_RECEITA IN (1,2)`;
-  p += `\n• IPTU Ano_Mes: numérico YYYYMM | LEFT JOIN LANCADO x PAGO para inadimplência`;
+  p += `\n\n=== SYBASE IQ 16 ===`;
+  p += `\n• TOP N (nunca LIMIT) | YEAR() MONTH() | ISNULL(col,0) | LIST(col,',')`;
+  p += `\n• Strings CASE-SENSITIVE | NO_ANO=2025 para orçamento | CD_ORGAO VARCHAR com aspas simples`;
+  p += `\n• Secretarias: CD_ORGAO='1' AND DS_UO<>DS_ORGAO`;
+  p += `\n• Receita: CD_TIPO_NATUREZA_RECEITA IN (1,2)`;
+  p += `\n• IPTU Ano_Mes=YYYYMM numérico`;
 
-  p += `\n\n=== REGRA DE EXECUÇÃO ===`;
-  p += `\n⚡ Chame query_database IMEDIATAMENTE ao receber qualquer pergunta — sem anunciar, sem texto antes.`;
-  p += `\nProibido: "Vou buscar...", "Agora consulto...", "Perfeito! Agora vou..."`;
-  p += `\nPermitido: executar a tool diretamente e apresentar os dados.`;
+  p += `\n\n⚡ EXECUÇÃO: Chame query_database IMEDIATAMENTE. Proibido anunciar. Execute e apresente direto.`;
 
   p += `\n\n=== GRÁFICOS ===`;
-  p += `\nSEMPRE inclua um gráfico quando houver comparação, evolução ou distribuição.`;
-  p += `\nFormato: [CHART]{"type":"bar","title":"Título","labels":["A","B"],"values":[100,200],"label":"Série"}[/CHART]`;
-  p += `\nTipos: bar | horizontalBar | line | area | multiBar | stackedBar | doughnut | pie`;
-  p += `\nmultiBar/stackedBar usam "datasets":[{"label":"X","values":[...]},...] em vez de "values".`;
-  p += `\nValues = números puros (sem R$). Máx 12 itens.`;
-
-  p += `\n\nResponda em português. Seja direto e técnico.`;
+  p += `\nSEMPRE inclua gráfico em comparações/evoluções/distribuições.`;
+  p += `\nFormato: [CHART]JSON[/CHART]`;
+  p += `\nTipos: bar|horizontalBar|line|area|multiBar|stackedBar|doughnut|pie`;
+  p += `\nSimples: {"type":"bar","title":"Título","labels":["A","B"],"values":[100,200],"label":"Série"}`;
+  p += `\nMúltiplas séries: {"type":"multiBar","title":"X","labels":[...],"datasets":[{"label":"X","values":[...]},{"label":"Y","values":[...]}]}`;
+  p += `\nValues=números puros. Máx 12 itens. Use horizontalBar para rankings.`;
+  p += `\n\nResponda em português, direto e técnico.`;
   return p;
 }
 
-// ── Send message ──────────────────────────────────────────────────────────
+// ── Send ──────────────────────────────────────────────────────────────────
 async function send(text) {
-  const input = document.getElementById('chatInput');
-  input.value = text;
+  document.getElementById('chatInput').value = text;
   sendMsg();
 }
 
@@ -665,8 +936,6 @@ async function sendMsg() {
 
   appendMsg('user', q);
   history.push({ role: 'user', content: q });
-
-  // Typing indicator
   appendMsg('ai', '', true);
 
   try {
@@ -681,7 +950,6 @@ async function sendMsg() {
       })
     });
 
-    // Remove typing indicator
     document.getElementById('typingMsg')?.remove();
 
     let data;
@@ -689,31 +957,30 @@ async function sendMsg() {
     catch {
       appendMsg('ai', `⚠️ Erro ${res.status}: resposta inválida do servidor.`);
       history.pop();
-      return reset(input);
+      return done(input);
     }
 
     if (!res.ok || data.error) {
-      const msg = typeof data.error === 'string' ? data.error : data.error?.message || `Erro ${res.status}`;
-      appendMsg('ai', `⚠️ ${msg}`);
+      const m = typeof data.error === 'string' ? data.error : data.error?.message || `Erro ${res.status}`;
+      appendMsg('ai', `⚠️ ${m}`);
       history.pop();
-      return reset(input);
+      return done(input);
     }
 
-    const reply = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+    const reply = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
     if (!reply) {
-      appendMsg('ai', '⚠️ Resposta vazia. Tente reformular a pergunta.');
+      appendMsg('ai', '⚠️ Resposta vazia. Tente reformular.');
       history.pop();
     } else {
       const msgEl = appendMsg('ai', reply);
-      history.push({ role: 'assistant', content: reply });
-      // Badge SQL adicionado ao DOM diretamente — não passa pelo md()
+      history.push({ role:'assistant', content: reply });
       if (data.queries_executed?.length) {
-        const total = data.queries_executed.reduce((s, q) => s + q.linhas, 0);
+        const total = data.queries_executed.reduce((s,q)=>s+q.linhas,0);
         const badge = document.createElement('div');
         badge.className = 'sql-badge';
         badge.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-            <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4.03 3-9 3S3 13.66 3 12M21 5v14c0 1.66-4.03 3-9 3S3 20.66 3 19V5"/>
-          </svg>${data.queries_executed.length} consulta(s) · ${total.toLocaleString('pt-BR')} linhas`;
+          <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4.03 3-9 3S3 13.66 3 12M21 5v14c0 1.66-4.03 3-9 3S3 20.66 3 19V5"/>
+        </svg>${data.queries_executed.length} consulta(s) · ${total.toLocaleString('pt-BR')} linhas`;
         msgEl.querySelector('.msg-body').appendChild(badge);
       }
     }
@@ -724,10 +991,10 @@ async function sendMsg() {
     history.pop();
   }
 
-  reset(input);
+  done(input);
 }
 
-function reset(input) {
+function done(input) {
   busy = false;
   const btn = document.getElementById('sendBtn');
   btn.disabled = false;
