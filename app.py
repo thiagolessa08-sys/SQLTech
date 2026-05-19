@@ -458,10 +458,30 @@ def _missing_chart_with_data(content, queries_run):
 
 
 # ── Auto-chart: detecta padrão tabular nos rows e gera [CHART] ───────────
+def _to_float(v):
+    """Converte para float aceitando Decimal, int, str numérica. Retorna None se falhar."""
+    if v is None:
+        return None
+    if isinstance(v, bool):
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        # Tenta limpar vírgula decimal (string BR)
+        if isinstance(v, str):
+            try:
+                return float(v.replace('.', '').replace(',', '.'))
+            except Exception:
+                return None
+        return None
+
 def _auto_chart_from_rows(rows, query_sql=""):
     """Gera config de gráfico a partir de rows. Retorna dict ou None."""
-    if not rows or len(rows) < 2 or len(rows) > 50:
+    if not rows:
         return None
+    # Afrouxado: aceita de 1 a 200 rows (corta no fim em 12)
+    if len(rows) > 200:
+        rows = rows[:200]
 
     first = rows[0]
     if not isinstance(first, dict):
@@ -471,64 +491,52 @@ def _auto_chart_from_rows(rows, query_sql=""):
     if len(cols) < 2:
         return None
 
-    # Identifica colunas: texto (label) vs numéricas (values)
+    # Identifica colunas: texto vs numéricas (testa nos primeiros 10 valores)
     text_cols, num_cols = [], []
     for c in cols:
-        sample_vals = [r.get(c) for r in rows[:5] if r.get(c) is not None]
-        if not sample_vals:
+        sample = [r.get(c) for r in rows[:10] if r.get(c) is not None]
+        if not sample:
             continue
-        try:
-            [float(v) for v in sample_vals]
+        # É numérica se TODOS os samples convertem pra float
+        nums = [_to_float(v) for v in sample]
+        if all(n is not None for n in nums):
             num_cols.append(c)
-        except (TypeError, ValueError):
+        else:
             text_cols.append(c)
 
     if not text_cols or not num_cols:
         return None
 
     label_col = text_cols[0]
-    # Filtra rows válidos
     valid_rows = [r for r in rows
                   if r.get(label_col) is not None
-                  and any(r.get(nc) is not None for nc in num_cols)]
-    if len(valid_rows) < 2:
+                  and any(_to_float(r.get(nc)) is not None for nc in num_cols)]
+    if len(valid_rows) < 1:
         return None
 
-    # Limita a 12 itens (regra dos gráficos)
     valid_rows = valid_rows[:12]
 
     labels = [str(r.get(label_col, ''))[:40] for r in valid_rows]
 
     sql_low = (query_sql or "").lower()
-    is_temporal = any(w in sql_low for w in ['no_mes', 'no_ano', 'ds_mes', 'mes', 'ano', 'data'])
+    is_temporal = any(w in sql_low for w in ['no_mes', 'ds_mes', 'datepart', 'dateformat'])
 
-    # Determina tipo de gráfico e estrutura values
     if len(num_cols) >= 2:
-        # Múltiplas séries — multiBar
         datasets = []
         for nc in num_cols[:3]:
-            try:
-                vals = [float(r.get(nc, 0) or 0) for r in valid_rows]
-                datasets.append({"label": nc, "values": vals})
-            except Exception:
-                pass
+            vals = [(_to_float(r.get(nc)) or 0) for r in valid_rows]
+            datasets.append({"label": str(nc), "values": vals})
         if not datasets:
             return None
-        chart_type = "line" if is_temporal else "multiBar"
         return {
-            "type": chart_type,
+            "type": "line" if is_temporal else "multiBar",
             "title": "Análise comparativa",
             "labels": labels,
             "datasets": datasets
         }
     else:
-        # Série única
         nc = num_cols[0]
-        try:
-            values = [float(r.get(nc, 0) or 0) for r in valid_rows]
-        except Exception:
-            return None
-        # Escolhe tipo: temporal → line, ≥5 itens → horizontalBar (ranking), poucos → bar
+        values = [(_to_float(r.get(nc)) or 0) for r in valid_rows]
         if is_temporal:
             chart_type = "line"
         elif len(values) >= 5:
@@ -540,38 +548,63 @@ def _auto_chart_from_rows(rows, query_sql=""):
             "title": "Análise",
             "labels": labels,
             "values": values,
-            "label": nc
+            "label": str(nc)
         }
 
 
 def _inject_chart_into_response(data, queries_full):
-    """Se a resposta de texto não tem [CHART] mas há rows, injeta o gráfico."""
-    if not queries_full:
-        return data
-    content = data.get("content", [])
-    text_block = next((b for b in content if b.get("type") == "text"), None)
-    if not text_block:
-        return data
-    text = text_block.get("text", "")
-    if "[CHART]" in text or "[chart]" in text.lower():
-        return data
+    """Se a resposta não tem [CHART] mas há rows, injeta o gráfico.
+    Sempre retorna data com debug info para diagnóstico."""
+    debug = {"version": "v3-auto-chart", "queries": len(queries_full), "step": "init"}
+    try:
+        if not queries_full:
+            debug["step"] = "no-queries-full"
+            data["_chart_debug"] = debug
+            return data
 
-    # Pega a última query com rows úteis
-    chart_cfg = None
-    for q in reversed(queries_full):
-        cfg = _auto_chart_from_rows(q.get("rows", []), q.get("sql", ""))
-        if cfg:
-            chart_cfg = cfg
-            break
+        content = data.get("content", [])
+        text_block = next((b for b in content if b.get("type") == "text"), None)
+        if not text_block:
+            debug["step"] = "no-text-block"
+            data["_chart_debug"] = debug
+            return data
 
-    if not chart_cfg:
+        text = text_block.get("text", "")
+        if "[CHART]" in text or "[chart]" in text.lower():
+            debug["step"] = "already-has-chart"
+            data["_chart_debug"] = debug
+            return data
+
+        # Tenta cada query em ordem reversa
+        chart_cfg = None
+        tried = []
+        for q in reversed(queries_full):
+            rows_len = len(q.get("rows", []))
+            tried.append(rows_len)
+            cfg = _auto_chart_from_rows(q.get("rows", []), q.get("sql", ""))
+            if cfg:
+                chart_cfg = cfg
+                break
+
+        debug["tried_rows"] = tried
+        if not chart_cfg:
+            debug["step"] = "no-valid-chart"
+            data["_chart_debug"] = debug
+            return data
+
+        chart_block = "\n\n[CHART]" + json.dumps(chart_cfg, ensure_ascii=False, default=str) + "[/CHART]"
+        text_block["text"] = text.rstrip() + chart_block
+        debug["step"] = "injected"
+        debug["type"] = chart_cfg.get("type")
+        debug["labels_count"] = len(chart_cfg.get("labels", []))
+        data["_chart_debug"] = debug
+        data["_auto_chart_injected"] = True
         return data
-
-    # Injeta o gráfico no final do texto
-    chart_block = "\n\n[CHART]" + json.dumps(chart_cfg, ensure_ascii=False) + "[/CHART]"
-    text_block["text"] = text.rstrip() + chart_block
-    data["_auto_chart_injected"] = True
-    return data
+    except Exception as e:
+        debug["step"] = "exception"
+        debug["error"] = str(e)[:200]
+        data["_chart_debug"] = debug
+        return data
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
