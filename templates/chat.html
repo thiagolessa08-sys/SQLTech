@@ -134,15 +134,16 @@ main { padding: 0 !important; }
 .msg.user { align-self: flex-end; max-width: 72%; }
 
 .msg-av {
-  width: 33px; height: 33px;
-  border-radius: 10px;
+  width: 36px; height: 36px;
+  border-radius: 50%;
   display: grid; place-items: center;
   font-size: 10px;
   font-weight: 700;
   flex-shrink: 0;
 }
-.msg.ai   .msg-av { background: var(--green-soft); color: var(--green-ink); border: 1px solid oklch(0.82 0.10 250); }
-.msg.user .msg-av { background: var(--green); color: #fff; }
+.msg.ai   .msg-av { background: oklch(0.45 0.14 160); color: #fff; }
+.msg.user .msg-av { background: var(--green); color: #fff; border-radius: 50%; }
+.msg-av svg { flex-shrink: 0; }
 
 .msg-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .msg.user .msg-body { align-items: flex-end; }
@@ -222,15 +223,41 @@ main { padding: 0 !important; }
   padding: 11px 16px 10px;
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
+  gap: 10px;
+  flex-wrap: wrap;
 }
 .data-card-title {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--ink-2);
   flex: 1;
+  min-width: 150px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.data-card-toggles {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.insights-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: oklch(0.50 0.12 160);
+  margin-bottom: 8px;
+}
+.insights-label::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: oklch(0.55 0.18 160);
+  border-radius: 50%;
 }
 .view-toggle {
   display: flex;
@@ -259,6 +286,15 @@ main { padding: 0 !important; }
   background: var(--surface);
   color: var(--green-ink);
   box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+.view-toggle.type-toggle {
+  background: var(--surface);
+  border-color: oklch(0.88 0.015 130);
+}
+.view-toggle.type-toggle button.active {
+  background: oklch(0.45 0.14 160);
+  color: #fff;
+  box-shadow: 0 1px 3px oklch(0.45 0.14 160 / .35);
 }
 .data-card-body { padding: 14px 16px 12px; }
 .chart-view canvas { width: 100% !important; }
@@ -708,23 +744,49 @@ function makeDataCard(cfg) {
   const tableHtml = buildTable(cfg, tbId);
   const sqlHtml = buildSqlView(queriesSnap);
 
+  // Tipo inicial: usa o type definido pelo modelo (ou 'bar' como default)
+  const initType = cfg.type || 'bar';
+  const isMulti = ['multiBar','stackedBar'].includes(initType);
+  const isCircular = ['pie','doughnut'].includes(initType);
+
+  // Seletor de tipo de gráfico (Colunas | Barras | Linha)
+  // Não mostra para pie/doughnut (não faz sentido trocar) nem para multi-séries complexas
+  const typeSelector = isCircular ? '' : `
+    <div class="view-toggle type-toggle" id="tt_${cardId}">
+      <button onclick="switchChartType('${cardId}','columns')" id="tbtn_columns_${cardId}" ${initType==='bar'||initType==='multiBar'?'class="active"':''}>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/></svg>
+        Colunas
+      </button>
+      <button onclick="switchChartType('${cardId}','bars')" id="tbtn_bars_${cardId}" ${initType==='horizontalBar'?'class="active"':''}>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="4"/><rect x="3" y="10" width="13" height="4"/><rect x="3" y="17" width="9" height="4"/></svg>
+        Barras
+      </button>
+      <button onclick="switchChartType('${cardId}','line')" id="tbtn_line_${cardId}" ${initType==='line'||initType==='area'?'class="active"':''}>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"/></svg>
+        Linha
+      </button>
+    </div>`;
+
   return { id, tbId, cardId, queriesSnap, html: `
     <div class="data-card" id="${cardId}">
       <div class="data-card-head">
         <span class="data-card-title">${cfg.title || 'Resultado'}</span>
-        <div class="view-toggle">
-          <button class="active" onclick="switchView('${cardId}','chart')" id="vbtn_chart_${cardId}">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/></svg>
-            Gráfico
-          </button>
-          <button onclick="switchView('${cardId}','table')" id="vbtn_table_${cardId}">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>
-            Tabela
-          </button>
-          <button onclick="switchView('${cardId}','sql')" id="vbtn_sql_${cardId}">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            SQL
-          </button>
+        <div class="data-card-toggles">
+          <div class="view-toggle">
+            <button class="active" onclick="switchView('${cardId}','chart')" id="vbtn_chart_${cardId}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/></svg>
+              Gráfico
+            </button>
+            <button onclick="switchView('${cardId}','table')" id="vbtn_table_${cardId}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>
+              Tabela
+            </button>
+            <button onclick="switchView('${cardId}','sql')" id="vbtn_sql_${cardId}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              SQL
+            </button>
+          </div>
+          ${typeSelector}
         </div>
       </div>
       <div class="data-card-body">
@@ -734,8 +796,43 @@ function makeDataCard(cfg) {
         <div class="table-view" id="tv_${cardId}">${tableHtml}</div>
         <div class="sql-view" id="sv_${cardId}">${sqlHtml}</div>
       </div>
-    </div>`
+    </div>`,
+    cfg
   };
+}
+
+// Storage de chart instances + configs por cardId
+const chartRegistry = {};
+
+function switchChartType(cardId, mode) {
+  const entry = chartRegistry[cardId];
+  if (!entry) return;
+  const { canvasId, cfg } = entry;
+
+  // Destrói o chart anterior
+  if (entry.instance) {
+    entry.instance.destroy();
+    entry.instance = null;
+  }
+
+  // Cria novo cfg com tipo trocado
+  const newCfg = { ...cfg };
+  if (mode === 'columns') {
+    newCfg.type = cfg.datasets ? 'multiBar' : 'bar';
+  } else if (mode === 'bars') {
+    newCfg.type = 'horizontalBar';
+  } else if (mode === 'line') {
+    newCfg.type = cfg.datasets ? 'multiBar' : 'line';
+    if (!cfg.datasets) newCfg.type = 'line';
+  }
+
+  renderChart(canvasId, newCfg);
+
+  // Toggle buttons
+  ['columns','bars','line'].forEach(m => {
+    const b = document.getElementById(`tbtn_${m}_${cardId}`);
+    if (b) b.classList.toggle('active', m === mode);
+  });
 }
 
 function switchView(cardId, mode) {
@@ -805,9 +902,19 @@ function buildTable(cfg, tbId) {
 
 function renderChart(id, cfg) {
   const canvas = document.getElementById(id);
-  if (!canvas) return;
+  if (!canvas) return null;
   const ctx2 = canvas.getContext('2d');
   const type = cfg.type || 'bar';
+
+  // Helper para registrar a instância criada
+  const reg = (inst) => {
+    const cardId = canvas.closest('.data-card')?.id;
+    if (cardId) {
+      const existing = chartRegistry[cardId] || {};
+      chartRegistry[cardId] = { canvasId: id, cfg: existing.cfg || cfg, instance: inst };
+    }
+    return inst;
+  };
 
   const baseOpts = {
     responsive: true,
@@ -822,17 +929,16 @@ function renderChart(id, cfg) {
   };
 
   if (type === 'doughnut' || type === 'pie') {
-    new Chart(ctx2, { type, data: {
+    return reg(new Chart(ctx2, { type, data: {
       labels: cfg.labels,
       datasets: [{ data: cfg.values, backgroundColor: C, borderWidth: 2, borderColor: '#fff' }]
     }, options: { responsive: true, plugins: {
       legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12, padding: 12 } },
       tooltip: { callbacks: { label: c => `${c.label}: ${fmtNum(c.raw)}` } }
-    }}});
-    return;
+    }}}));
   }
   if (type === 'horizontalBar') {
-    new Chart(ctx2, { type: 'bar', data: {
+    return reg(new Chart(ctx2, { type: 'bar', data: {
       labels: cfg.labels,
       datasets: [{ data: cfg.values, backgroundColor: C[0], borderRadius: 5, label: cfg.label||'' }]
     }, options: { ...baseOpts, indexAxis: 'y',
@@ -841,40 +947,36 @@ function renderChart(id, cfg) {
         x: { ...baseOpts.scales.x, ticks: { ...baseOpts.scales.x.ticks, callback: v => fmtNum(v) } },
         y: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#888' }, border: { display: false } }
       }
-    }});
-    return;
+    }}));
   }
   if (type === 'multiBar') {
-    new Chart(ctx2, { type: 'bar', data: {
+    return reg(new Chart(ctx2, { type: 'bar', data: {
       labels: cfg.labels,
       datasets: (cfg.datasets||[]).map((ds,i) => ({ label: ds.label, data: ds.values, backgroundColor: C[i]||C[0], borderRadius: 4 }))
-    }, options: { ...baseOpts, plugins: { ...baseOpts.plugins, legend: { display: true, position: 'top', labels: { font:{ size:11 }, boxWidth:12 } } } }});
-    return;
+    }, options: { ...baseOpts, plugins: { ...baseOpts.plugins, legend: { display: true, position: 'top', labels: { font:{ size:11 }, boxWidth:12 } } } }}));
   }
   if (type === 'stackedBar') {
-    new Chart(ctx2, { type: 'bar', data: {
+    return reg(new Chart(ctx2, { type: 'bar', data: {
       labels: cfg.labels,
       datasets: (cfg.datasets||[]).map((ds,i) => ({ label: ds.label, data: ds.values, backgroundColor: C[i]||C[0] }))
     }, options: { ...baseOpts,
       plugins: { ...baseOpts.plugins, legend: { display: true, position: 'top', labels: { font:{ size:11 }, boxWidth:12 } } },
       scales: { ...baseOpts.scales, x: { ...baseOpts.scales.x, stacked: true }, y: { ...baseOpts.scales.y, stacked: true } }
-    }});
-    return;
+    }}));
   }
   if (type === 'line' || type === 'area') {
     const fill = type === 'area';
-    new Chart(ctx2, { type: 'line', data: {
+    return reg(new Chart(ctx2, { type: 'line', data: {
       labels: cfg.labels,
       datasets: [{ data: cfg.values, borderColor: C[0], backgroundColor: fill ? C[0].replace(')','/0.12)') : 'transparent',
         fill, tension: 0.35, pointRadius: 4, pointBackgroundColor: C[0], label: cfg.label||'' }]
-    }, options: baseOpts });
-    return;
+    }, options: baseOpts }));
   }
   // default bar
-  new Chart(ctx2, { type: 'bar', data: {
+  return reg(new Chart(ctx2, { type: 'bar', data: {
     labels: cfg.labels,
     datasets: [{ data: cfg.values, backgroundColor: cfg.labels?.length === 1 ? C[0] : C, borderRadius: 7, label: cfg.label||'' }]
-  }, options: baseOpts });
+  }, options: baseOpts }));
 }
 
 // ── Parse bubble (extract [CHART]...[/CHART]) ─────────────────────────────
@@ -996,14 +1098,22 @@ function appendMsg(role, text, typing = false) {
         return card.html;
       } catch(e) { return ''; }
     });
-    bubbleHtml = md(htmlText);
+    let processed = md(htmlText);
+    // Adiciona label "Insights" no início se houver gráfico
+    if (cfgs.length) {
+      processed = `<div class="insights-label">Insights</div>` + processed;
+    }
+    bubbleHtml = processed;
     pendingRenders = cfgs;
   } else {
     bubbleHtml = md(text);
   }
 
+  const userIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+  const aiIcon = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 1 7 7c0 2.5-1.3 4.7-3.3 6l-.7.5V17a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-1.5l-.7-.5A7 7 0 0 1 12 2z"/></svg>`;
+
   wrap.innerHTML = `
-    <div class="msg-av">${role === 'user' ? 'PM' : 'IA'}</div>
+    <div class="msg-av">${role === 'user' ? userIcon : aiIcon}</div>
     <div class="msg-body">
       <div class="msg-bubble">${bubbleHtml}</div>
       ${!typing ? `<div class="msg-time">${now()}</div>` : ''}
@@ -1013,7 +1123,13 @@ function appendMsg(role, text, typing = false) {
 
   if (pendingRenders.length) {
     requestAnimationFrame(() => {
-      pendingRenders.forEach(r => renderChart(r.id, r.cfg));
+      pendingRenders.forEach(r => {
+        // Pré-registra o cfg ORIGINAL antes de renderizar (pra preservar nos toggles)
+        const canvas = document.getElementById(r.id);
+        const cardId = canvas?.closest('.data-card')?.id;
+        if (cardId) chartRegistry[cardId] = { canvasId: r.id, cfg: r.cfg, instance: null };
+        renderChart(r.id, r.cfg);
+      });
       scrollEnd();
     });
   } else {
