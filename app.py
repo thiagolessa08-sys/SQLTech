@@ -566,7 +566,6 @@ def _auto_chart_from_rows(rows, query_sql=""):
     """Gera config de gráfico a partir de rows. Retorna dict ou None."""
     if not rows:
         return None
-    # Afrouxado: aceita de 1 a 200 rows (corta no fim em 12)
     if len(rows) > 200:
         rows = rows[:200]
 
@@ -577,6 +576,14 @@ def _auto_chart_from_rows(rows, query_sql=""):
     cols = list(first.keys())
     if len(cols) < 2:
         return None
+
+    # REJEITA exploração de dimensão de data/calendário (sem agregação)
+    sql_up = (query_sql or "").upper()
+    is_calendario = ('DIM_BIORC_DATA_CALENDARIO' in sql_up or
+                     'DATA_CALENDARIO' in sql_up)
+    has_aggregation = any(kw in sql_up for kw in ['SUM(', 'COUNT(', 'AVG(', 'MIN(', 'MAX(', 'GROUP BY'])
+    if is_calendario and not has_aggregation:
+        return None  # exploração de calendário não vira gráfico
 
     # Identifica colunas: texto vs numéricas — IGNORANDO chaves técnicas
     text_cols, num_cols = [], []
@@ -625,22 +632,37 @@ def _auto_chart_from_rows(rows, query_sql=""):
         return None  # labels muito curtos (caracteres soltos)
 
     # QUALIDADE: valida que pelo menos UMA coluna numérica tem valores grandes
-    # (evita pegar códigos/flags/fichas como série)
     def has_meaningful_values(col):
+        cu = (col or '').upper()
+        # Rejeita explicitamente colunas que sabemos serem anos/meses (dimensões)
+        if cu in {'NO_ANO', 'NO_MES', 'NO_DIA', 'NO_TRIMESTRE_ANO', 'NO_SEMESTRE_ANO',
+                  'NO_ANO_MES', 'ANO', 'MES', 'YEAR', 'MONTH'}:
+            return False
         vals = [_to_float(r.get(col)) for r in valid_rows]
         vals = [v for v in vals if v is not None and v != 0]
         if len(vals) < 2:
             return False
-        # Pelo menos um valor > 1000 (R$ significativo) OU variação grande
         max_v = max(abs(v) for v in vals)
+        min_v = min(abs(v) for v in vals if v != 0)
+        # Rejeita se TODOS os valores estão na faixa de anos (1900-2100)
+        # ou de datas YYYYMMDD (19000101-21001231)
+        if all(1900 <= abs(v) <= 2100 for v in vals):
+            return False
+        if all(19000101 <= abs(v) <= 21001231 for v in vals):
+            return False
         if max_v > 1000:
             return True
-        # Se valores pequenos mas variação > 10x, ainda pode ser %, qtd, etc.
-        min_v = min(abs(v) for v in vals if v != 0)
         return min_v > 0 and (max_v / min_v) > 10
 
     num_cols = [nc for nc in num_cols if has_meaningful_values(nc)]
     if not num_cols:
+        return None
+
+    # QUALIDADE: rejeita se labels parecem códigos de data (YYYYMMDD / YYYYMM puros)
+    def looks_like_date_code(s):
+        s = str(s or '').strip()
+        return s.isdigit() and len(s) in (6, 8) and s[:2] in ('19', '20')
+    if all(looks_like_date_code(l) for l in labels):
         return None
 
     sql_low = (query_sql or "").lower()
@@ -933,10 +955,17 @@ def chat():
             data = _process_response(data, queries_full)
             return jsonify(data), resp.status_code
 
-    # Fallback: último response com texto + auto-chart se aplicável
+    # Fallback: último response — mas SUBSTITUI texto se for anúncio
     fallback = last_text_data or data
     if queries_run:
         fallback["queries_executed"] = queries_run
+
+    # Se o texto final ainda é um anúncio, substitui por algo neutro
+    content = fallback.get("content", [])
+    text_block = next((b for b in content if b.get("type") == "text"), None)
+    if text_block and _is_announcement(content):
+        text_block["text"] = "Apresento os dados consolidados das consultas realizadas:"
+
     fallback = _process_response(fallback, queries_full)
     return jsonify(fallback), 200
 
