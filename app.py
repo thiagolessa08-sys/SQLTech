@@ -467,13 +467,90 @@ def _to_float(v):
     try:
         return float(v)
     except (TypeError, ValueError):
-        # Tenta limpar vírgula decimal (string BR)
         if isinstance(v, str):
             try:
                 return float(v.replace('.', '').replace(',', '.'))
             except Exception:
                 return None
         return None
+
+
+# Colunas técnicas que NÃO devem virar series no gráfico
+_SKIP_COL_PREFIXES = ('SK_', 'ID_', 'FK_', 'PK_')
+_SKIP_COL_EXACT = {'ID', 'SK', 'CD_ORGAO', 'CD_TIPO_NATUREZA_RECEITA',
+                   'NR_ANO_EMPENHO', 'CD_NATUREZA_DESPESA', 'CD_GRUPO',
+                   'CD_ELEMENTO', 'CD_FONTE_RECURSO', 'CD_UNIDADE_GESTORA',
+                   'CD_MODALIDADE'}
+
+# Tradução de nomes técnicos → label amigável
+_LABEL_MAP = {
+    'VL_ARRECADACAO_RECEITA': 'Arrecadação',
+    'VL_SALDO_MES_EMPENHADO': 'Empenhado',
+    'VL_SALDO_MES_LIQUIDADO': 'Liquidado',
+    'VL_SALDO_MES_PAGO': 'Pago',
+    'VL_PROJ_LEI': 'Projeto de Lei',
+    'VL_ORC_APROV_LEI': 'Orçamento Aprovado',
+    'VL_EMENDA': 'Emendas',
+    'VL_ALTERACAOORCAMENTARIA': 'Alteração Orçamentária',
+    'VL_SUPRIMENTO_FINANCEIRO': 'Suprimento Financeiro',
+    'VL_RAP_PROCESSADO_INSCRITO': 'RAP Processado Inscrito',
+    'VL_RAP_PROCESSADO_PAGO': 'RAP Processado Pago',
+    'VL_RAP_PROCESSADO_CANCELADO': 'RAP Processado Cancelado',
+    'VL_RAP_NAO_PROCESSADO_INSCRITO': 'RAP Não Processado Inscrito',
+    'VL_RAP_NAO_PROCESSADO_PAGO': 'RAP Não Processado Pago',
+    'NO_ANO': 'Ano',
+    'NO_MES': 'Mês',
+    'DS_MES': 'Mês',
+    'DS_ORGAO': 'Órgão',
+    'DS_UO': 'Secretaria',
+    'DS_FORNECEDOR': 'Fornecedor',
+    'DS_NATUREZA_DESPESA': 'Natureza da Despesa',
+    'DS_GRUPO': 'Grupo de Despesa',
+    'DS_CATEGORIA': 'Categoria',
+    'DS_ELEMENTO_DESPESA': 'Elemento',
+    'DS_FONTE_RECURSO': 'Fonte',
+    'DS_GRUPO_FONTE': 'Grupo de Fonte',
+    'DS_FUNCAO': 'Função',
+    'DS_SUBFUNCAO': 'Subfunção',
+    'DS_PROGRAMA_EXECUCAO': 'Programa',
+    'DS_ACAO_EXECUCAO': 'Ação',
+    'DS_MODALIDADE': 'Modalidade',
+    'DS_UNIDADE_GESTORA': 'Unidade Gestora',
+    'DS_TIPO_FORNECEDOR': 'Tipo de Fornecedor',
+    'CPF_CNPJ': 'CPF/CNPJ',
+    'NOME': 'Contribuinte',
+    'Bairro': 'Bairro',
+    'Tributo': 'Tributo',
+    'Valor_Lancado': 'Lançado',
+    'Valor_Pago': 'Pago',
+    'Valor_Juros': 'Juros',
+    'Valor_Multa': 'Multa',
+    'Valor_Correcao': 'Correção',
+    'Ano_Mes': 'Mês',
+}
+
+def _should_skip_col(col_name):
+    """True se a coluna é técnica (chave/ID) e não deve virar série."""
+    if not col_name:
+        return True
+    cu = col_name.upper()
+    if cu in _SKIP_COL_EXACT:
+        return True
+    return any(cu.startswith(p) for p in _SKIP_COL_PREFIXES)
+
+def _prettify_col(col_name):
+    """Converte nome técnico em label amigável."""
+    if not col_name:
+        return 'Valor'
+    if col_name in _LABEL_MAP:
+        return _LABEL_MAP[col_name]
+    # Fallback: remove prefixos VL_/DS_/NO_, troca _ por espaço, title case
+    s = col_name
+    for prefix in ('VL_', 'DS_', 'NO_', 'CD_'):
+        if s.upper().startswith(prefix):
+            s = s[len(prefix):]
+            break
+    return s.replace('_', ' ').title()
 
 def _auto_chart_from_rows(rows, query_sql=""):
     """Gera config de gráfico a partir de rows. Retorna dict ou None."""
@@ -491,18 +568,28 @@ def _auto_chart_from_rows(rows, query_sql=""):
     if len(cols) < 2:
         return None
 
-    # Identifica colunas: texto vs numéricas (testa nos primeiros 10 valores)
+    # Identifica colunas: texto vs numéricas — IGNORANDO chaves técnicas
     text_cols, num_cols = [], []
     for c in cols:
+        if _should_skip_col(c):
+            continue  # pula SK_*, ID_*, FK_*, PK_*
         sample = [r.get(c) for r in rows[:10] if r.get(c) is not None]
         if not sample:
             continue
-        # É numérica se TODOS os samples convertem pra float
         nums = [_to_float(v) for v in sample]
         if all(n is not None for n in nums):
             num_cols.append(c)
         else:
             text_cols.append(c)
+
+    # Se sobrou pouco, tenta relaxar e incluir colunas técnicas como texto (mas não como valor)
+    if not text_cols:
+        for c in cols:
+            if _should_skip_col(c):
+                sample = [r.get(c) for r in rows[:5] if r.get(c) is not None]
+                if sample:
+                    text_cols.append(c)
+                    break
 
     if not text_cols or not num_cols:
         return None
@@ -525,7 +612,7 @@ def _auto_chart_from_rows(rows, query_sql=""):
         datasets = []
         for nc in num_cols[:3]:
             vals = [(_to_float(r.get(nc)) or 0) for r in valid_rows]
-            datasets.append({"label": str(nc), "values": vals})
+            datasets.append({"label": _prettify_col(nc), "values": vals})
         if not datasets:
             return None
         return {
@@ -548,7 +635,7 @@ def _auto_chart_from_rows(rows, query_sql=""):
             "title": "Análise",
             "labels": labels,
             "values": values,
-            "label": str(nc)
+            "label": _prettify_col(nc)
         }
 
 
