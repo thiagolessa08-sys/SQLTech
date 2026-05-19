@@ -228,6 +228,46 @@ LEFT JOIN pref_aruja_sp.PREFEITURA_IPTU_PAGO p
 WHERE LEFT(CAST(l.Ano_Mes AS VARCHAR(6)),4) = '2025'
 GROUP BY l.Bairro ORDER BY inadimplente DESC
 
+══════════════════════════════════════════
+REGRA — DETALHAMENTO POR SECRETARIA (DRILL-DOWN):
+══════════════════════════════════════════
+Quando o usuário pedir para "detalhar" / "abrir" / "drill-down" / "ver detalhes"
+de uma secretaria específica (ex.: "detalhe a Secretaria de Saúde"),
+SEMPRE use o modelo abaixo — quebra o orçamento da secretaria por
+Função → Subfunção → Programa → Ação:
+
+  SELECT TOP 100
+    f.DS_FUNCAO              AS funcao,
+    sf.DS_SUBFUNCAO          AS subfuncao,
+    p.DS_PROGRAMA_EXECUCAO   AS programa,
+    a.DS_ACAO_EXECUCAO       AS acao,
+    SUM(o.VL_ORC_APROV_LEI)  AS orcamento_aprovado
+  FROM pref_aruja_sp.FATO_BIORC_ELABORACAO_ORCAMENTO o
+  JOIN pref_aruja_sp.DIM_BIORC_INSTITUCIONAL i
+    ON o.SK_INSTITUCIONAL_EXECUCAO = i.SK_INSTITUCIONAL
+  JOIN pref_aruja_sp.DIM_BIORC_DATA_CALENDARIO d
+    ON o.SK_DATA_CALENDARIO_ANO = d.SK_DATA_CALENDARIO
+  JOIN pref_aruja_sp.BRIDGE_BIORC_FUNCIONAL_PROGRAMATICA b
+    ON o.SK_FUNCIONAL_PROGRAMATICA = b.SK_FUNCIONAL_PROGRAMATICA
+  JOIN pref_aruja_sp.DIM_BIORC_FUNCAO    f  ON b.SK_FUNCAO    = f.SK_FUNCAO
+  JOIN pref_aruja_sp.DIM_BIORC_SUBFUNCAO sf ON b.SK_SUBFUNCAO = sf.SK_SUBFUNCAO
+  JOIN pref_aruja_sp.DIM_BIORC_PROGRAMA  p  ON b.SK_PROGRAMA  = p.SK_PROGRAMA
+  JOIN pref_aruja_sp.DIM_BIORC_ACAO      a  ON b.SK_ACAO      = a.SK_ACAO
+  WHERE d.NO_ANO   = 2026
+    AND i.CD_ORGAO = '1'
+    AND i.DS_UO    = 'SECRETARIA DE SAÚDE'   -- troque pela secretaria pedida
+  GROUP BY f.DS_FUNCAO, sf.DS_SUBFUNCAO, p.DS_PROGRAMA_EXECUCAO, a.DS_ACAO_EXECUCAO
+  ORDER BY orcamento_aprovado DESC
+
+Observações:
+• Substitua o valor de i.DS_UO pelo nome EXATO da secretaria pedida
+  (case-sensitive, em MAIÚSCULAS — confira pelos rankings antes).
+• Troque o NO_ANO se o usuário pedir um ano diferente; padrão = 2025 para execução
+  e 2026 para LOA aprovada.
+• Se quiser execução em vez de LOA, substitua a FATO por
+  FATO_BIORC_MENSAL_INTERVENCAO_DOTACAO e o valor por VL_SALDO_MES_EMPENHADO/PAGO,
+  ajustando o JOIN de calendário para SK_DATA_CALENDARIO_MES.
+
 ################################################################################
 # NOVAS REGRAS — adicione abaixo desta linha com data e descrição
 ################################################################################
