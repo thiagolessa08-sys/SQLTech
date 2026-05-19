@@ -442,6 +442,22 @@ def _is_refusal_without_query(content, queries_run):
     text_low = text.lower()
     return any(p in text_low for p in _REFUSAL_PHRASES)
 
+def _missing_chart_with_data(content, queries_run):
+    """Detecta resposta com dados (queries rodaram, há números) mas sem [CHART]."""
+    if not queries_run:
+        return False
+    text = ' '.join(blk.get('text', '') for blk in content if blk.get('type') == 'text')
+    if '[CHART]' in text or '[chart]' in text.lower():
+        return False
+    # Conta indicadores de dados tabulares na resposta
+    has_money    = bool(re.search(r'R\$\s*[\d.,]+', text))
+    has_list     = bool(re.search(r'^\s*\d+[\.\)]\s+', text, re.MULTILINE))
+    has_bullets  = text.count('•') >= 2 or text.count(':') >= 3
+    has_percent  = bool(re.search(r'\d+[,\.]?\d*\s*%', text))
+    # Se a resposta menciona >=2 categorias com números, precisa de gráfico
+    money_count  = len(re.findall(r'R\$\s*[\d.,]+', text))
+    return (money_count >= 2) or (has_list and has_money) or (has_bullets and has_percent)
+
 @app.route("/api/chat", methods=["POST"])
 def chat():
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -553,6 +569,15 @@ def chat():
                 "ATENÇÃO: você DEVE executar uma query antes de dizer que não há dados. "
                 "Use SELECT TOP 5 * para verificar se a tabela existe. "
                 "Execute agora e relate o que encontrou."
+            )})
+        elif stop == "end_turn" and _missing_chart_with_data(content, queries_run):
+            # Resposta tem dados mas esqueceu o gráfico — forçar inclusão
+            call["messages"].append({"role": "assistant", "content": content})
+            call["messages"].append({"role": "user", "content": (
+                "Sua resposta tem dados mas FALTOU o gráfico. "
+                "REFAÇA agora incluindo um [CHART]...[/CHART] com os mesmos dados. "
+                "Use horizontalBar para rankings, doughnut para participação, line para evolução, multiBar para comparar séries. "
+                "Mantenha o texto curto (2 parágrafos) e SEMPRE inclua o [CHART]."
             )})
         else:
             if queries_run:

@@ -998,15 +998,35 @@ EXECUÇÃO
 Execute → receba dados → responda direto com o gráfico.
 
 ══════════════════════════════════════
-GRÁFICOS — SEMPRE incluir em comparação/evolução/distribuição
+🚨 GRÁFICOS — OBRIGATÓRIO em TODA resposta com dados
 ══════════════════════════════════════
-Formato: [CHART]JSON[/CHART]
+REGRA ABSOLUTA: Se a resposta tem QUALQUER um destes — não importa quantos itens:
+  • Mais de 1 número/categoria → INCLUA UM GRÁFICO
+  • Ranking, listagem, comparação, distribuição → INCLUA UM GRÁFICO
+  • Evolução temporal, mês a mês, ano a ano → INCLUA UM GRÁFICO
+  • Percentuais, participação, composição → INCLUA UM GRÁFICO
+
+PROIBIDO responder apenas com texto/lista quando há dados tabulares.
+PROIBIDO usar listas "1. X: R$ 100 2. Y: R$ 200" — sempre converta em [CHART].
+
+Formato (obrigatório):
+[CHART]{"type":"horizontalBar","title":"Título","labels":["A","B"],"values":[100,200],"label":"Série"}[/CHART]
+
 Tipos: bar | horizontalBar | line | area | multiBar | stackedBar | doughnut | pie
 Simples: {"type":"bar","title":"X","labels":["A","B"],"values":[100,200],"label":"Série"}
-Múltiplas: {"type":"multiBar","title":"X","labels":[...],"datasets":[{"label":"Y","values":[...]},{"label":"Z","values":[...]}]}
-Values=números puros (sem R$). Máx 12 itens. horizontalBar para rankings.
+Múltiplas séries: {"type":"multiBar","title":"X","labels":[...],"datasets":[{"label":"Y","values":[...]},{"label":"Z","values":[...]}]}
 
-Responda em português, direto e técnico. Máx 3 parágrafos.`;
+Escolha do tipo:
+• Ranking de secretarias/fornecedores/categorias (top N) → horizontalBar
+• Despesa por grupo/categoria/tipo (poucas fatias) → doughnut ou pie
+• Evolução mensal/anual → line ou area
+• Receita vs Despesa lado a lado → multiBar
+• Composição (Pessoal+Investimento+Outros) em vários anos → stackedBar
+• Comparação simples (2-5 itens) → bar
+
+Values = números puros (sem R$, sem %). Máx 12 itens. Title curto.
+
+Responda em português, direto. Máx 2 parágrafos curtos + o gráfico.`;
 }
 
 // ── Send ──────────────────────────────────────────────────────────────────
