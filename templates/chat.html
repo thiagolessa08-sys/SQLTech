@@ -677,7 +677,7 @@ PREFEITURA_IPTU_PAGO → IPTU pago
 ══════════════════════════════════════
 EXEMPLOS DE QUERIES CORRETAS
 ══════════════════════════════════════
-1) Despesa por secretaria 2025:
+1) Despesa por secretaria 2025 (use DS_UO, nunca DS_ORGAO):
 SELECT TOP 10 i.DS_UO AS Secretaria, SUM(f.VL_SALDO_MES_EMPENHADO) AS Empenhado
 FROM pref_aruja_sp.FATO_BIORC_MENSAL_INTERVENCAO_DOTACAO f
 JOIN pref_aruja_sp.DIM_BIORC_INSTITUCIONAL i ON f.SK_INSTITUCIONAL = i.SK_INSTITUCIONAL
@@ -685,19 +685,42 @@ JOIN pref_aruja_sp.DIM_BIORC_DATA_CALENDARIO d ON f.SK_DATA_CALENDARIO_MES = d.S
 WHERE d.NO_ANO = 2025 AND i.CD_ORGAO = '1' AND i.DS_UO <> i.DS_ORGAO
 GROUP BY i.DS_UO ORDER BY Empenhado DESC
 
-2) Receita líquida 2025:
+2) Orçamento aprovado por secretaria 2026 (use FATO_BIORC_ELABORACAO_ORCAMENTO):
+SELECT TOP 10 i.DS_UO AS Secretaria, SUM(f.VL_ORC_APROV_LEI) AS Orcamento
+FROM pref_aruja_sp.FATO_BIORC_ELABORACAO_ORCAMENTO f
+JOIN pref_aruja_sp.DIM_BIORC_INSTITUCIONAL i ON f.SK_INSTITUCIONAL_EXECUCAO = i.SK_INSTITUCIONAL
+WHERE f.NO_ANO = 2026 AND i.CD_ORGAO = '1' AND i.DS_UO <> i.DS_ORGAO
+GROUP BY i.DS_UO ORDER BY Orcamento DESC
+
+3) Receita líquida 2025:
 SELECT SUM(f.VL_ARRECADACAO_RECEITA) AS receita
 FROM pref_aruja_sp.FATO_BIORC_EXECUCAO_RECEITA f
 JOIN pref_aruja_sp.DIM_BIORC_DATA_CALENDARIO d ON f.SK_DATA_CALENDARIO_ANO = d.SK_DATA_CALENDARIO
 WHERE d.NO_ANO = 2025 AND f.CD_TIPO_NATUREZA_RECEITA IN (1,2)
 
-3) Evolução mensal de despesa Saúde 2025:
+4) Despesa por ELEMENTO (drill-down):
+SELECT TOP 12 e.DS_ELEMENTO_DESPESA AS Elemento, SUM(f.VL_SALDO_MES_EMPENHADO) AS Empenhado
+FROM pref_aruja_sp.FATO_BIORC_MENSAL_INTERVENCAO_DOTACAO f
+JOIN pref_aruja_sp.DIM_BIORC_NATUREZA_DESPESA n ON f.SK_NATUREZA_DESPESA = n.SK_NATUREZA_DESPESA
+JOIN pref_aruja_sp.DIM_BIORC_ELEMENTO_DESPESA e ON n.SK_ELEMENTO_DESPESA = e.SK_ELEMENTO_DESPESA
+JOIN pref_aruja_sp.DIM_BIORC_DATA_CALENDARIO d ON f.SK_DATA_CALENDARIO_MES = d.SK_DATA_CALENDARIO
+WHERE d.NO_ANO = 2025
+GROUP BY e.DS_ELEMENTO_DESPESA ORDER BY Empenhado DESC
+
+5) Evolução mensal de despesa Saúde 2025:
 SELECT d.NO_MES AS Mes, SUM(f.VL_SALDO_MES_EMPENHADO) AS Empenhado
 FROM pref_aruja_sp.FATO_BIORC_MENSAL_INTERVENCAO_DOTACAO f
 JOIN pref_aruja_sp.DIM_BIORC_INSTITUCIONAL i ON f.SK_INSTITUCIONAL = i.SK_INSTITUCIONAL
 JOIN pref_aruja_sp.DIM_BIORC_DATA_CALENDARIO d ON f.SK_DATA_CALENDARIO_MES = d.SK_DATA_CALENDARIO
 WHERE d.NO_ANO = 2025 AND i.DS_UO LIKE '%Saúde%'
 GROUP BY d.NO_MES ORDER BY d.NO_MES
+
+⚠ REGRAS DE OURO:
+• Para "por secretaria" → SEMPRE i.DS_UO (com WHERE CD_ORGAO='1' AND DS_UO<>DS_ORGAO). Nunca i.DS_ORGAO.
+• Para "orçamento previsto/aprovado" → use FATO_BIORC_ELABORACAO_ORCAMENTO com NO_ANO (campo direto).
+• Para "executado/empenhado/pago" → use FATO_BIORC_MENSAL_INTERVENCAO_DOTACAO com JOIN no calendário.
+• Ano padrão = 2025 (mais completo). Se o usuário pedir 2026, USE 2026.
+• Se a query retornar 0 linhas, tente o ano anterior (2025) e mencione isso na resposta.
 
 ══════════════════════════════════════
 EXECUÇÃO

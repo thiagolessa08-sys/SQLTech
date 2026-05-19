@@ -899,7 +899,7 @@ def chat():
     queries_full = []  # rows completos para auto-chart
     last_text_data = None
 
-    for _ in range(5):
+    for _ in range(6):
         resp = requests.post("https://api.anthropic.com/v1/messages",
                              headers=hdrs, json=call, timeout=90)
         if resp.status_code != 200:
@@ -960,13 +960,27 @@ def chat():
     if queries_run:
         fallback["queries_executed"] = queries_run
 
-    # Se o texto final ainda é um anúncio, substitui por algo neutro
     content = fallback.get("content", [])
     text_block = next((b for b in content if b.get("type") == "text"), None)
-    if text_block and _is_announcement(content):
-        text_block["text"] = "Apresento os dados consolidados das consultas realizadas:"
 
+    # Tenta auto-chart primeiro
     fallback = _process_response(fallback, queries_full)
+    has_chart = bool(fallback.get("charts"))
+
+    # Se o texto é um anúncio E não conseguimos chart, monta resposta diagnóstica
+    text_block = next((b for b in fallback.get("content", []) if b.get("type") == "text"), None)
+    if text_block and _is_announcement([text_block]):
+        if has_chart:
+            text_block["text"] = "Apresento os dados consolidados das consultas realizadas:"
+        else:
+            # Diagnóstico útil: mostra o que foi tentado
+            lines_summary = ", ".join(f"{q.get('linhas',0)} linhas" for q in queries_run) or "nenhuma"
+            text_block["text"] = (
+                f"Não consegui completar a análise nessa rodada — fiz {len(queries_run)} consulta(s) "
+                f"({lines_summary}), mas os dados retornados não permitiram montar uma resposta clara. "
+                f"Tente reformular a pergunta com mais detalhes (ano específico, secretaria, etc.). "
+                f"Os anos com dados disponíveis são 2023–2025."
+            )
     return jsonify(fallback), 200
 
 @app.route("/api/chat/context")
