@@ -552,9 +552,65 @@ def _auto_chart_from_rows(rows, query_sql=""):
         }
 
 
+def _process_response(data, queries_full):
+    """Extrai [CHART] do texto, valida cada um, e retorna data com:
+    - content[0].text limpo (sem [CHART])
+    - data['charts'] = lista de configs válidos
+    Se não houver chart válido mas houver rows, gera um automaticamente.
+    """
+    try:
+        content = data.get("content", [])
+        text_block = next((b for b in content if b.get("type") == "text"), None)
+        if not text_block:
+            data["charts"] = []
+            data["_chart_debug"] = {"step": "no-text-block"}
+            return data
+
+        text = text_block.get("text", "")
+        charts = []
+        pat = re.compile(r'\[CHART\]([\s\S]*?)\[/CHART\]', re.IGNORECASE)
+
+        # Extrai charts válidos do texto
+        for m in pat.finditer(text):
+            try:
+                cfg = json.loads(m.group(1).strip())
+                if isinstance(cfg, dict) and cfg.get("type") and \
+                   (cfg.get("values") or cfg.get("datasets")):
+                    charts.append(cfg)
+            except Exception:
+                pass
+
+        # Remove TODOS os [CHART] (válidos e inválidos) do texto
+        clean = pat.sub('', text)
+        # Remove tags soltas
+        clean = re.sub(r'\[CHART\][\s\S]*$', '', clean, flags=re.IGNORECASE)
+        clean = re.sub(r'\[/CHART\]', '', clean, flags=re.IGNORECASE)
+        clean = clean.strip()
+
+        # Se nenhum chart válido foi extraído mas há rows → gera automaticamente
+        if not charts and queries_full:
+            for q in reversed(queries_full):
+                cfg = _auto_chart_from_rows(q.get("rows", []), q.get("sql", ""))
+                if cfg:
+                    charts.append(cfg)
+                    break
+
+        text_block["text"] = clean
+        data["charts"] = charts
+        data["_chart_debug"] = {
+            "step": "ok",
+            "charts_count": len(charts),
+            "auto_generated": len(charts) == 1 and not pat.search(text)
+        }
+        return data
+    except Exception as e:
+        data["charts"] = []
+        data["_chart_debug"] = {"step": "exception", "error": str(e)[:200]}
+        return data
+
+
 def _inject_chart_into_response(data, queries_full):
-    """Se a resposta não tem [CHART] válido mas há rows, injeta um gráfico.
-    Valida JSON do [CHART] existente; se for inválido, substitui pelo auto-gerado."""
+    """Wrapper legado — agora delega para _process_response."""
     debug = {"version": "v4-validate-chart", "queries": len(queries_full), "step": "init"}
     try:
         content = data.get("content", [])
@@ -749,14 +805,14 @@ def chat():
             # Resposta final — injeta gráfico automaticamente se faltou
             if queries_run:
                 data["queries_executed"] = queries_run
-            data = _inject_chart_into_response(data, queries_full)
+            data = _process_response(data, queries_full)
             return jsonify(data), resp.status_code
 
     # Fallback: último response com texto + auto-chart se aplicável
     fallback = last_text_data or data
     if queries_run:
         fallback["queries_executed"] = queries_run
-    fallback = _inject_chart_into_response(fallback, queries_full)
+    fallback = _process_response(fallback, queries_full)
     return jsonify(fallback), 200
 
 @app.route("/api/chat/context")
