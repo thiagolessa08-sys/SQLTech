@@ -481,11 +481,23 @@ def chat():
         }
     }
 
-    msgs = list(payload.get("messages", []))
+    # Limita histórico às últimas 8 trocas (16 mensagens) — economiza tokens
+    msgs_raw = list(payload.get("messages", []))
+    msgs = msgs_raw[-16:] if len(msgs_raw) > 16 else msgs_raw
+
+    # System prompt como blocks com cache_control — Anthropic prompt caching
+    # O catálogo grande fica em cache por 5 min → 10% do custo nas chamadas seguintes
+    system_text = payload.get("system", "")
+    system_blocks = [{
+        "type": "text",
+        "text": system_text,
+        "cache_control": {"type": "ephemeral"}
+    }] if system_text else []
+
     call = {
         "model":      payload.get("model", "claude-haiku-4-5-20251001"),
         "max_tokens": payload.get("max_tokens", 1800),
-        "system":     payload.get("system", ""),
+        "system":     system_blocks,
         "tools":      [query_tool],
         "messages":   msgs
     }
