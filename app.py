@@ -6,7 +6,29 @@ import pandas as pd
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "sqltech-orcamento-2026-xK9m")
-DB_PATH = os.path.join(os.path.dirname(__file__), "data", "municipal.db")
+DB_PATH      = os.path.join(os.path.dirname(__file__), "data", "municipal.db")
+DB_RULES_PATH = os.path.join(os.path.dirname(__file__), "data", "db_rules.txt")
+
+# ── Regras do Banco (db_rules.txt) ───────────────────────────────────────
+def load_db_rules() -> str:
+    """Carrega o arquivo de regras do banco. Retorna string vazia se não encontrado."""
+    try:
+        with open(DB_RULES_PATH, encoding="utf-8") as f:
+            return f.read().strip()
+    except Exception as e:
+        print(f"[db_rules] Aviso: não foi possível carregar db_rules.txt — {e}")
+        return ""
+
+def append_db_rule(rule_text: str) -> bool:
+    """Acrescenta uma nova regra ao arquivo db_rules.txt. Retorna True se ok."""
+    try:
+        with open(DB_RULES_PATH, encoding="utf-8", mode="a") as f:
+            f.write(f"\n\n# Data: {datetime.now().strftime('%Y-%m-%d %H:%M')}  |  Via API\n")
+            f.write(rule_text.strip() + "\n")
+        return True
+    except Exception as e:
+        print(f"[db_rules] Erro ao escrever regra: {e}")
+        return False
 
 # ── Sybase IQ Agent ──────────────────────────────────────────────────────
 AGENT_URL     = os.environ.get("AGENT_URL", "").rstrip("/")
@@ -841,7 +863,10 @@ def chat():
     if not api_key:
         return jsonify({"error": "ANTHROPIC_API_KEY não configurada"}), 500
 
-    payload = request.json
+    payload = request.get_json(silent=True)
+    if not payload:
+        return jsonify({"error": "Payload inválido ou Content-Type incorreto"}), 400
+
     hdrs = {"Content-Type": "application/json", "x-api-key": api_key, "anthropic-version": "2023-06-01"}
 
     # Ferramenta de consulta SQL — exclusivamente Sybase IQ via agent
@@ -874,114 +899,163 @@ def chat():
         }
     }
 
-    # Limita histórico às últimas 8 trocas (16 mensagens) — economiza tokens
-    msgs_raw = list(payload.get("messages", []))
-    msgs = msgs_raw[-16:] if len(msgs_raw) > 16 else msgs_raw
+    try:
+        # Limita histórico às últimas 8 trocas (16 mensagens) — economiza tokens
+        msgs_raw = list(payload.get("messages", []))
+        msgs = msgs_raw[-16:] if len(msgs_raw) > 16 else msgs_raw
 
-    # System prompt como blocks com cache_control — Anthropic prompt caching
-    # O catálogo grande fica em cache por 5 min → 10% do custo nas chamadas seguintes
-    system_text = payload.get("system", "")
-    system_blocks = [{
-        "type": "text",
-        "text": system_text,
-        "cache_control": {"type": "ephemeral"}
-    }] if system_text else []
+        # ── Monta system prompt ──────────────────────────────────────────────
+        # FONTE ÚNICA DE VERDADE: db_rules.txt (editável sem deploy).
+        # O frontend pode opcionalmente acrescentar contexto dinâmico em "system".
+        db_rules = load_db_rules()
+        frontend_system = str(payload.get("system", "") or "").strip()
 
-    call = {
-        "model":      payload.get("model", "claude-haiku-4-5-20251001"),
-        "max_tokens": payload.get("max_tokens", 1800),
-        "system":     system_blocks,
-        "tools":      [query_tool],
-        "messages":   msgs
-    }
-
-    queries_run = []
-    queries_full = []  # rows completos para auto-chart
-    last_text_data = None
-
-    for _ in range(6):
-        resp = requests.post("https://api.anthropic.com/v1/messages",
-                             headers=hdrs, json=call, timeout=90)
-        if resp.status_code != 200:
-            return jsonify(resp.json()), resp.status_code
-
-        data = resp.json()
-        stop  = data.get("stop_reason")
-        content = data.get("content", [])
-
-        has_text = any(blk.get('type') == 'text' and blk.get('text', '').strip()
-                       for blk in content)
-        if has_text:
-            last_text_data = data
-
-        if stop == "tool_use":
-            call["messages"].append({"role": "assistant", "content": content})
-            results = []
-            for blk in content:
-                if blk.get("type") == "tool_use" and blk.get("name") == "query_database":
-                    sql = blk.get("input", {}).get("sql", "")
-                    try:
-                        rows = sybase_query(sql, limit=500)
-                        queries_run.append({"sql": sql, "linhas": len(rows), "db": "sybase"})
-                        queries_full.append({"sql": sql, "rows": rows})
-                        payload_res = json.dumps({"linhas": len(rows), "dados": rows},
-                                                 ensure_ascii=False, default=str)
-                    except Exception as e:
-                        payload_res = json.dumps({"erro": str(e)})
-                    results.append({
-                        "type": "tool_result",
-                        "tool_use_id": blk["id"],
-                        "content": payload_res
-                    })
-            call["messages"].append({"role": "user", "content": results})
-        elif stop == "end_turn" and _is_announcement(content):
-            # Modelo anunciou algo mas não entregou — forçar execução
-            call["messages"].append({"role": "assistant", "content": content})
-            push_msg = ("Execute a query e apresente os dados agora." if not queries_run
-                        else "Apresente os resultados agora com o gráfico. Não anuncie — entregue direto.")
-            call["messages"].append({"role": "user", "content": push_msg})
-        elif stop == "end_turn" and _is_refusal_without_query(content, queries_run):
-            # Modelo recusou sem tentar — forçar pelo menos um SELECT exploratório
-            call["messages"].append({"role": "assistant", "content": content})
-            call["messages"].append({"role": "user", "content": (
-                "ATENÇÃO: você DEVE executar uma query antes de dizer que não há dados. "
-                "Use SELECT TOP 5 * para verificar se a tabela existe. "
-                "Execute agora e relate o que encontrou."
-            )})
+        if db_rules and frontend_system:
+            system_text = db_rules + "\n\n" + frontend_system
         else:
-            # Resposta final — injeta gráfico automaticamente se faltou
-            if queries_run:
-                data["queries_executed"] = queries_run
-            data = _process_response(data, queries_full)
-            return jsonify(data), resp.status_code
+            system_text = db_rules or frontend_system
 
-    # Fallback: último response — mas SUBSTITUI texto se for anúncio
-    fallback = last_text_data or data
-    if queries_run:
-        fallback["queries_executed"] = queries_run
+        # System prompt com cache_control — Anthropic prompt caching (5 min TTL)
+        system_blocks = [{
+            "type": "text",
+            "text": system_text,
+            "cache_control": {"type": "ephemeral"}
+        }] if system_text else []
 
-    content = fallback.get("content", [])
-    text_block = next((b for b in content if b.get("type") == "text"), None)
+        call = {
+            "model":      payload.get("model", "claude-haiku-4-5-20251001"),
+            "max_tokens": payload.get("max_tokens", 1800),
+            "system":     system_blocks,
+            "tools":      [query_tool],
+            "messages":   msgs
+        }
 
-    # Tenta auto-chart primeiro
-    fallback = _process_response(fallback, queries_full)
-    has_chart = bool(fallback.get("charts"))
+        queries_run = []
+        queries_full = []  # rows completos para auto-chart
+        last_text_data = None
+        data = {}
+        MAX_QUERIES = 3  # limite duro — após 3, ferramenta é removida
 
-    # Se o texto é um anúncio E não conseguimos chart, monta resposta diagnóstica
-    text_block = next((b for b in fallback.get("content", []) if b.get("type") == "text"), None)
-    if text_block and _is_announcement([text_block]):
-        if has_chart:
-            text_block["text"] = "Apresento os dados consolidados das consultas realizadas:"
-        else:
-            # Diagnóstico útil: mostra o que foi tentado
-            lines_summary = ", ".join(f"{q.get('linhas',0)} linhas" for q in queries_run) or "nenhuma"
-            text_block["text"] = (
-                f"Não consegui completar a análise nessa rodada — fiz {len(queries_run)} consulta(s) "
-                f"({lines_summary}), mas os dados retornados não permitiram montar uma resposta clara. "
-                f"Tente reformular a pergunta com mais detalhes (ano específico, secretaria, etc.). "
-                f"Os anos com dados disponíveis são 2023–2025."
-            )
-    return jsonify(fallback), 200
+        for _ in range(8):  # até 8 iterações de turno
+            # Desativa a tool quando atingiu o limite de queries
+            if len(queries_run) >= MAX_QUERIES:
+                call["tools"] = []
+
+            # ── Chamada à API Anthropic com retry para 529 (overloaded) ──
+            resp = None
+            backoffs = [0, 8, 16, 24]  # 4 tentativas: 0, 8s, 16s, 24s
+            for attempt, wait in enumerate(backoffs):
+                if wait:
+                    time.sleep(wait)
+                try:
+                    resp = requests.post("https://api.anthropic.com/v1/messages",
+                                         headers=hdrs, json=call, timeout=90)
+                except requests.exceptions.Timeout:
+                    if attempt == len(backoffs) - 1:
+                        return jsonify({"error": "Timeout ao chamar API Anthropic (>90s)"}), 504
+                    continue
+                except requests.exceptions.ConnectionError as e:
+                    if attempt == len(backoffs) - 1:
+                        return jsonify({"error": f"Falha de conexão com API Anthropic: {e}"}), 502
+                    continue
+                # 529 = overloaded — retentar
+                if resp.status_code == 529 and attempt < len(backoffs) - 1:
+                    continue
+                break
+
+            if resp is None:
+                return jsonify({"error": "Falha total ao contatar API Anthropic"}), 502
+
+            if resp.status_code != 200:
+                try:
+                    err_body = resp.json()
+                except Exception:
+                    err_body = {"error": resp.text[:300]}
+                return jsonify(err_body), resp.status_code
+
+            try:
+                data = resp.json()
+            except Exception as e:
+                return jsonify({"error": f"Resposta inválida da API Anthropic: {e}"}), 502
+
+            stop    = data.get("stop_reason")
+            content = data.get("content", [])
+
+            has_text = any(blk.get('type') == 'text' and blk.get('text', '').strip()
+                           for blk in content)
+            if has_text:
+                last_text_data = data
+
+            if stop == "tool_use":
+                call["messages"].append({"role": "assistant", "content": content})
+                results = []
+                for blk in content:
+                    if blk.get("type") == "tool_use" and blk.get("name") == "query_database":
+                        sql = blk.get("input", {}).get("sql", "")
+                        try:
+                            rows = sybase_query(sql, limit=500)
+                            queries_run.append({"sql": sql, "linhas": len(rows), "db": "sybase"})
+                            queries_full.append({"sql": sql, "rows": rows})
+                            payload_res = json.dumps({"linhas": len(rows), "dados": rows},
+                                                     ensure_ascii=False, default=str)
+                        except Exception as e:
+                            payload_res = json.dumps({"erro": str(e)})
+                        results.append({
+                            "type": "tool_result",
+                            "tool_use_id": blk["id"],
+                            "content": payload_res
+                        })
+                call["messages"].append({"role": "user", "content": results})
+
+            elif stop == "end_turn" and _is_announcement(content):
+                # Modelo anunciou algo mas não entregou — forçar execução
+                call["messages"].append({"role": "assistant", "content": content})
+                push_msg = ("Execute a query e apresente os dados agora." if not queries_run
+                            else "Apresente os resultados agora com o gráfico. Não anuncie — entregue direto.")
+                call["messages"].append({"role": "user", "content": push_msg})
+
+            elif stop == "end_turn" and _is_refusal_without_query(content, queries_run):
+                # Modelo recusou sem tentar — forçar pelo menos um SELECT exploratório
+                call["messages"].append({"role": "assistant", "content": content})
+                call["messages"].append({"role": "user", "content": (
+                    "ATENÇÃO: você DEVE executar uma query antes de dizer que não há dados. "
+                    "Use SELECT TOP 5 * para verificar se a tabela existe. "
+                    "Execute agora e relate o que encontrou."
+                )})
+            else:
+                # Resposta final
+                if queries_run:
+                    data["queries_executed"] = queries_run
+                data = _process_response(data, queries_full)
+                return jsonify(data), resp.status_code
+
+        # ── Fallback após 6 iterações ────────────────────────────────────────
+        fallback = last_text_data or data
+        if queries_run:
+            fallback["queries_executed"] = queries_run
+
+        fallback = _process_response(fallback, queries_full)
+        has_chart = bool(fallback.get("charts"))
+
+        text_block = next((b for b in fallback.get("content", []) if b.get("type") == "text"), None)
+        if text_block and _is_announcement([text_block]):
+            if has_chart:
+                text_block["text"] = "Apresento os dados consolidados das consultas realizadas:"
+            else:
+                lines_summary = ", ".join(f"{q.get('linhas',0)} linhas" for q in queries_run) or "nenhuma"
+                text_block["text"] = (
+                    f"Não consegui completar a análise nessa rodada — fiz {len(queries_run)} consulta(s) "
+                    f"({lines_summary}), mas os dados retornados não permitiram montar uma resposta clara. "
+                    f"Tente reformular a pergunta com mais detalhes (ano específico, secretaria, etc.). "
+                    f"Os anos com dados disponíveis são 2023–2025."
+                )
+        return jsonify(fallback), 200
+
+    except Exception as exc:
+        # Garante que NUNCA retorna HTML — sempre JSON com mensagem de erro
+        import traceback
+        print(f"[chat] ERRO NÃO TRATADO: {exc}\n{traceback.format_exc()}")
+        return jsonify({"error": f"Erro interno do servidor: {str(exc)}"}), 500
 
 @app.route("/api/chat/context")
 def chat_context():
@@ -1123,6 +1197,40 @@ def api_sybase_query():
         return jsonify({"linhas": len(rows), "dados": rows})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
+# ── Endpoints de Regras do Banco ─────────────────────────────────────────
+@app.route("/api/db-rules", methods=["GET"])
+@login_required
+def get_db_rules():
+    """Retorna o conteúdo atual do arquivo de regras."""
+    content = load_db_rules()
+    try:
+        mtime = os.path.getmtime(DB_RULES_PATH)
+        modified = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        modified = None
+    return jsonify({
+        "ok": True,
+        "content": content,
+        "path": DB_RULES_PATH,
+        "modified": modified,
+        "size_chars": len(content)
+    })
+
+@app.route("/api/db-rules/add", methods=["POST"])
+@login_required
+def add_db_rule():
+    """Adiciona uma nova regra ao arquivo db_rules.txt."""
+    body = request.json or {}
+    rule_text = body.get("rule", "").strip()
+    if not rule_text:
+        return jsonify({"ok": False, "error": "Campo 'rule' é obrigatório e não pode ser vazio"}), 400
+    if len(rule_text) > 4000:
+        return jsonify({"ok": False, "error": "Regra muito longa (máx 4000 chars)"}), 400
+    ok = append_db_rule(rule_text)
+    if ok:
+        return jsonify({"ok": True, "message": "Regra adicionada com sucesso"})
+    return jsonify({"ok": False, "error": "Falha ao gravar arquivo db_rules.txt"}), 500
 
 @app.route("/")
 @login_required

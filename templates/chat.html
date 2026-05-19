@@ -55,6 +55,17 @@ main { padding: 0 !important; }
 .msg-bubble code { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: oklch(0.92 0.015 250 / .5); border-radius: 4px; padding: 1px 5px; }
 .msg.user .msg-bubble code { background: rgba(255,255,255,.25); }
 
+/* Markdown tables dentro do bubble */
+.md-table-wrap { overflow-x: auto; margin: 10px 0 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.md-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.md-table thead tr { background: var(--surface-2); border-bottom: 2px solid var(--line); }
+.md-table th { text-align: left; padding: 8px 12px; font-weight: 700; color: var(--ink-2); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+.md-table th.num { text-align: right; }
+.md-table td { padding: 7px 12px; border-bottom: 1px solid var(--line); color: var(--ink); vertical-align: middle; }
+.md-table td.num { text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: var(--green-ink); white-space: nowrap; }
+.md-table tbody tr:last-child td { border-bottom: none; }
+.md-table tbody tr:hover { background: var(--surface-2); }
+
 .insights-tag { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: oklch(0.50 0.12 160); margin-bottom: 8px; }
 .insights-tag::before { content: ''; width: 6px; height: 6px; background: oklch(0.55 0.18 160); border-radius: 50%; }
 
@@ -254,8 +265,51 @@ function scrollEnd() {
 
 // ============================================================================
 // MARKDOWN (texto puro → HTML)
+// Suporta: bold, italic, code, headings, listas, TABELAS markdown
 // ============================================================================
+function mdTable(block) {
+  // Recebe um bloco de linhas que começam por "|" e gera <table>
+  const lines = block.split('\n').filter(l => l.trim().startsWith('|'));
+  if (lines.length < 2) return null;
+  // Segunda linha deve ser separador: | --- | --- |
+  if (!/^\s*\|[\s:|\-]+\|\s*$/.test(lines[1])) return null;
+
+  const splitRow = (l) => l.replace(/^\s*\||\|\s*$/g, '').split('|').map(c => c.trim());
+  const header = splitRow(lines[0]);
+  const rows   = lines.slice(2).map(splitRow);
+
+  const isNum = (v) => v && /^-?[\d.,]+%?$/.test(v.replace(/[R$\s]/g, ''));
+
+  let html = '<div class="md-table-wrap"><table class="md-table"><thead><tr>';
+  header.forEach((h, i) => {
+    const numCol = rows.length > 0 && isNum(rows[0][i] || '');
+    html += `<th${numCol ? ' class="num"' : ''}>${escHtml(h)}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+  rows.forEach(r => {
+    html += '<tr>';
+    r.forEach((c, i) => {
+      const numCol = isNum(c);
+      // Renderiza **bold** dentro da célula
+      const cell = escHtml(c).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      html += `<td${numCol ? ' class="num"' : ''}>${cell}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  return html;
+}
+
 function md(text) {
+  // 1. Detecta e substitui blocos de tabela markdown ANTES do escape
+  const tableBlocks = [];
+  text = text.replace(/(^\|.+\|\s*\n\|[\s:|\-]+\|\s*\n(?:\|.*\|\s*\n?)+)/gm, (m) => {
+    const html = mdTable(m);
+    if (!html) return m;
+    tableBlocks.push(html);
+    return `\x00TABLE${tableBlocks.length - 1}\x00`;
+  });
+
   let h = escHtml(text);
   h = h.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   h = h.replace(/\*([^*]+)\*/g, '<em>$1</em>');
@@ -269,6 +323,9 @@ function md(text) {
   h = h.split(/\n{2,}/).map(p => p.trim() ? `<p>${p.replace(/\n/g,'<br>')}</p>` : '').join('');
   // Limpa <p> em volta de <ul>
   h = h.replace(/<p>(<ul>[\s\S]*?<\/ul>)<\/p>/g, '$1');
+  // Reinsere as tabelas
+  h = h.replace(/<p>\x00TABLE(\d+)\x00<\/p>/g, (_, i) => tableBlocks[+i] || '');
+  h = h.replace(/\x00TABLE(\d+)\x00/g, (_, i) => tableBlocks[+i] || '');
   return h;
 }
 
@@ -609,147 +666,12 @@ function appendMsg(role, text, opts = {}) {
 
 // ============================================================================
 // SYSTEM PROMPT
+// O prompt completo é mantido no arquivo data/db_rules.txt (backend).
+// O backend injeta o conteúdo do arquivo automaticamente — aqui só passamos vazio.
+// Para editar comportamento da IA → edite data/db_rules.txt.
 // ============================================================================
 function buildPrompt() {
-  return `Você é analista de finanças públicas municipais da Prefeitura de Arujá (SP).
-Acessa Sybase IQ 16 via ferramenta query_database.
-Schema: pref_aruja_sp — SEMPRE prefixe pref_aruja_sp. em todas as tabelas.
-
-══════════════════════════════════════
-SINTAXE OBRIGATÓRIA — SYBASE IQ 16
-══════════════════════════════════════
-• Paginação: SELECT TOP N (nunca LIMIT)
-• Datas: YEAR(col), MONTH(col), DATEFORMAT(col,'yyyy-mm-dd')
-• Cast: CONVERT(NUMERIC, col)
-• Nulos: ISNULL(col, 0)
-• Concatenar: col1 || ' ' || col2
-• Strings CASE-SENSITIVE — NUNCA UPPER()/LOWER()
-• Ano dos dados: SEMPRE WHERE d.NO_ANO = 2025
-
-══════════════════════════════════════
-TABELAS FATO
-══════════════════════════════════════
-FATO_BIORC_MENSAL_INTERVENCAO_DOTACAO → Despesas mensais
-  VL_SALDO_MES_EMPENHADO, VL_SALDO_MES_LIQUIDADO, VL_SALDO_MES_PAGO
-  SK_DATA_CALENDARIO_MES→DIM_BIORC_DATA_CALENDARIO.SK_DATA_CALENDARIO
-  SK_INSTITUCIONAL→DIM_BIORC_INSTITUCIONAL
-  SK_NATUREZA_DESPESA→DIM_BIORC_NATUREZA_DESPESA
-  SK_FORNECEDOR→DIM_BIORC_FORNECEDOR
-  SK_FONTE_RECURSO→DIM_BIORC_FONTE_RECURSO
-  SK_UNIDADE_GESTORA→DIM_BIORC_UNIDADE_GESTORA
-
-FATO_BIORC_EXECUCAO_RECEITA → Receita/arrecadação
-  VL_ARRECADACAO_RECEITA
-  ⚠ SEMPRE filtrar CD_TIPO_NATUREZA_RECEITA IN (1,2)
-    CD=1=Bruta, CD=2=Deduções (negativas), Líquida=Bruta+Deduções
-  SK_DATA_CALENDARIO_ANO→DIM_BIORC_DATA_CALENDARIO.SK_DATA_CALENDARIO
-
-FATO_BIORC_ELABORACAO_ORCAMENTO → LOA aprovado
-  VL_PROJ_LEI, VL_ORC_APROV_LEI, VL_EMENDA
-  SK_INSTITUCIONAL_EXECUCAO→DIM_BIORC_INSTITUCIONAL.SK_INSTITUCIONAL
-
-══════════════════════════════════════
-TABELAS DIMENSÃO
-══════════════════════════════════════
-DIM_BIORC_INSTITUCIONAL → Secretarias
-  CD_ORGAO VARCHAR ('1'=Executivo, '2'=Câmara) — sempre aspas simples
-  DS_ORGAO=órgão, DS_UO=secretaria
-  Secretarias reais: WHERE CD_ORGAO='1' AND DS_UO<>DS_ORGAO
-
-DIM_BIORC_DATA_CALENDARIO → SK_DATA_CALENDARIO, NO_ANO, NO_MES, DS_MES, NO_ANO_MES (YYYYMM)
-DIM_BIORC_NATUREZA_DESPESA → CD_NATUREZA_DESPESA, DS_NATUREZA_DESPESA
-DIM_BIORC_GRUPO_DESPESA → CD_GRUPO (1=Pessoal, 3=Outras Corr, 4=Investimentos), DS_GRUPO
-DIM_BIORC_ELEMENTO_DESPESA → CD_ELEMENTO, DS_ELEMENTO_DESPESA
-DIM_BIORC_FORNECEDOR → DS_FORNECEDOR, CD_CPF_CNPJ_FORNECEDOR
-DIM_BIORC_FONTE_RECURSO → CD_FONTE_RECURSO, DS_FONTE_RECURSO
-DIM_BIORC_FUNCAO → DS_FUNCAO (Saúde, Educação...)
-
-══════════════════════════════════════
-TABELAS IPTU
-══════════════════════════════════════
-PREFEITURA_IPTU_LANCADO → IPTU cobrado
-  CPF_CNPJ, NOME, Bairro, Ano_Mes (YYYYMM), Valor_Lancado
-PREFEITURA_IPTU_PAGO → IPTU pago
-  + Valor_Pago, Valor_Juros, Valor_Multa, Valor_Correcao
-
-⭐ Pergunta com nome/CPF/bairro → USE SOMENTE tabelas IPTU.
-
-══════════════════════════════════════
-EXEMPLOS DE QUERIES CORRETAS
-══════════════════════════════════════
-1) Despesa por secretaria 2025 (use DS_UO, nunca DS_ORGAO):
-SELECT TOP 10 i.DS_UO AS Secretaria, SUM(f.VL_SALDO_MES_EMPENHADO) AS Empenhado
-FROM pref_aruja_sp.FATO_BIORC_MENSAL_INTERVENCAO_DOTACAO f
-JOIN pref_aruja_sp.DIM_BIORC_INSTITUCIONAL i ON f.SK_INSTITUCIONAL = i.SK_INSTITUCIONAL
-JOIN pref_aruja_sp.DIM_BIORC_DATA_CALENDARIO d ON f.SK_DATA_CALENDARIO_MES = d.SK_DATA_CALENDARIO
-WHERE d.NO_ANO = 2025 AND i.CD_ORGAO = '1' AND i.DS_UO <> i.DS_ORGAO
-GROUP BY i.DS_UO ORDER BY Empenhado DESC
-
-2) Orçamento aprovado por secretaria 2026 (use FATO_BIORC_ELABORACAO_ORCAMENTO):
-SELECT TOP 10 i.DS_UO AS Secretaria, SUM(f.VL_ORC_APROV_LEI) AS Orcamento
-FROM pref_aruja_sp.FATO_BIORC_ELABORACAO_ORCAMENTO f
-JOIN pref_aruja_sp.DIM_BIORC_INSTITUCIONAL i ON f.SK_INSTITUCIONAL_EXECUCAO = i.SK_INSTITUCIONAL
-WHERE f.NO_ANO = 2026 AND i.CD_ORGAO = '1' AND i.DS_UO <> i.DS_ORGAO
-GROUP BY i.DS_UO ORDER BY Orcamento DESC
-
-3) Receita líquida 2025:
-SELECT SUM(f.VL_ARRECADACAO_RECEITA) AS receita
-FROM pref_aruja_sp.FATO_BIORC_EXECUCAO_RECEITA f
-JOIN pref_aruja_sp.DIM_BIORC_DATA_CALENDARIO d ON f.SK_DATA_CALENDARIO_ANO = d.SK_DATA_CALENDARIO
-WHERE d.NO_ANO = 2025 AND f.CD_TIPO_NATUREZA_RECEITA IN (1,2)
-
-4) Despesa por ELEMENTO (drill-down):
-SELECT TOP 12 e.DS_ELEMENTO_DESPESA AS Elemento, SUM(f.VL_SALDO_MES_EMPENHADO) AS Empenhado
-FROM pref_aruja_sp.FATO_BIORC_MENSAL_INTERVENCAO_DOTACAO f
-JOIN pref_aruja_sp.DIM_BIORC_NATUREZA_DESPESA n ON f.SK_NATUREZA_DESPESA = n.SK_NATUREZA_DESPESA
-JOIN pref_aruja_sp.DIM_BIORC_ELEMENTO_DESPESA e ON n.SK_ELEMENTO_DESPESA = e.SK_ELEMENTO_DESPESA
-JOIN pref_aruja_sp.DIM_BIORC_DATA_CALENDARIO d ON f.SK_DATA_CALENDARIO_MES = d.SK_DATA_CALENDARIO
-WHERE d.NO_ANO = 2025
-GROUP BY e.DS_ELEMENTO_DESPESA ORDER BY Empenhado DESC
-
-5) Evolução mensal de despesa Saúde 2025:
-SELECT d.NO_MES AS Mes, SUM(f.VL_SALDO_MES_EMPENHADO) AS Empenhado
-FROM pref_aruja_sp.FATO_BIORC_MENSAL_INTERVENCAO_DOTACAO f
-JOIN pref_aruja_sp.DIM_BIORC_INSTITUCIONAL i ON f.SK_INSTITUCIONAL = i.SK_INSTITUCIONAL
-JOIN pref_aruja_sp.DIM_BIORC_DATA_CALENDARIO d ON f.SK_DATA_CALENDARIO_MES = d.SK_DATA_CALENDARIO
-WHERE d.NO_ANO = 2025 AND i.DS_UO LIKE '%Saúde%'
-GROUP BY d.NO_MES ORDER BY d.NO_MES
-
-⚠ REGRAS DE OURO:
-• Para "por secretaria" → SEMPRE i.DS_UO (com WHERE CD_ORGAO='1' AND DS_UO<>DS_ORGAO). Nunca i.DS_ORGAO.
-• Para "orçamento previsto/aprovado" → use FATO_BIORC_ELABORACAO_ORCAMENTO com NO_ANO (campo direto).
-• Para "executado/empenhado/pago" → use FATO_BIORC_MENSAL_INTERVENCAO_DOTACAO com JOIN no calendário.
-• Ano padrão = 2025 (mais completo). Se o usuário pedir 2026, USE 2026.
-• Se a query retornar 0 linhas, tente o ano anterior (2025) e mencione isso na resposta.
-
-══════════════════════════════════════
-EXECUÇÃO
-══════════════════════════════════════
-⚡ Chame query_database IMEDIATAMENTE — sem anúncio.
-NUNCA consulte sys.systable/INFORMATION_SCHEMA/metadados.
-Use TOP 50, sempre agregue (SUM/COUNT/GROUP BY), nunca SELECT *.
-NUNCA faça mais de 3 queries para responder uma pergunta — se 1 query não basta, refine ela, não rode várias exploratórias.
-
-══════════════════════════════════════
-🚫 PROIBIDO NA RESPOSTA AO USUÁRIO
-══════════════════════════════════════
-NUNCA mencione nomes técnicos de colunas/tabelas como:
-  SK_DATA_CALENDARIO_MES, SK_INSTITUCIONAL, VL_SALDO_MES_EMPENHADO,
-  DS_UO, NO_ANO, CD_ORGAO, FATO_BIORC_..., DIM_BIORC_..., etc.
-O usuário NÃO conhece o esquema. Apresente apenas:
-  • Nomes humanizados: "Secretaria", "Mês", "Empenhado", "Pago", "Saúde", etc.
-  • Valores em formato BR: R$ 1,2 milhões, 35% do total.
-NUNCA escreva "vou verificar", "vou tentar", "os dados retornam X" — apresente o RESULTADO.
-
-══════════════════════════════════════
-RESPOSTA
-══════════════════════════════════════
-Responda em português, direto. Máx 2 parágrafos curtos.
-SE houver dados tabulares (2+ categorias), inclua [CHART]:
-[CHART]{"type":"horizontalBar","title":"Título","labels":["Saúde","Educação"],"values":[100,200],"label":"Empenhado"}[/CHART]
-Tipos: bar | horizontalBar | line | area | multiBar | stackedBar | doughnut | pie
-multiBar/stackedBar: use "datasets":[{"label":"Empenhado","values":[...]}]
-Values = números puros, sem R$. Labels = nomes humanizados, nunca códigos. Máx 12 itens.`;
+  return "";
 }
 
 // ============================================================================
