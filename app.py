@@ -449,14 +449,129 @@ def _missing_chart_with_data(content, queries_run):
     text = ' '.join(blk.get('text', '') for blk in content if blk.get('type') == 'text')
     if '[CHART]' in text or '[chart]' in text.lower():
         return False
-    # Conta indicadores de dados tabulares na resposta
     has_money    = bool(re.search(r'R\$\s*[\d.,]+', text))
     has_list     = bool(re.search(r'^\s*\d+[\.\)]\s+', text, re.MULTILINE))
     has_bullets  = text.count('•') >= 2 or text.count(':') >= 3
     has_percent  = bool(re.search(r'\d+[,\.]?\d*\s*%', text))
-    # Se a resposta menciona >=2 categorias com números, precisa de gráfico
     money_count  = len(re.findall(r'R\$\s*[\d.,]+', text))
     return (money_count >= 2) or (has_list and has_money) or (has_bullets and has_percent)
+
+
+# ── Auto-chart: detecta padrão tabular nos rows e gera [CHART] ───────────
+def _auto_chart_from_rows(rows, query_sql=""):
+    """Gera config de gráfico a partir de rows. Retorna dict ou None."""
+    if not rows or len(rows) < 2 or len(rows) > 50:
+        return None
+
+    first = rows[0]
+    if not isinstance(first, dict):
+        return None
+
+    cols = list(first.keys())
+    if len(cols) < 2:
+        return None
+
+    # Identifica colunas: texto (label) vs numéricas (values)
+    text_cols, num_cols = [], []
+    for c in cols:
+        sample_vals = [r.get(c) for r in rows[:5] if r.get(c) is not None]
+        if not sample_vals:
+            continue
+        try:
+            [float(v) for v in sample_vals]
+            num_cols.append(c)
+        except (TypeError, ValueError):
+            text_cols.append(c)
+
+    if not text_cols or not num_cols:
+        return None
+
+    label_col = text_cols[0]
+    # Filtra rows válidos
+    valid_rows = [r for r in rows
+                  if r.get(label_col) is not None
+                  and any(r.get(nc) is not None for nc in num_cols)]
+    if len(valid_rows) < 2:
+        return None
+
+    # Limita a 12 itens (regra dos gráficos)
+    valid_rows = valid_rows[:12]
+
+    labels = [str(r.get(label_col, ''))[:40] for r in valid_rows]
+
+    sql_low = (query_sql or "").lower()
+    is_temporal = any(w in sql_low for w in ['no_mes', 'no_ano', 'ds_mes', 'mes', 'ano', 'data'])
+
+    # Determina tipo de gráfico e estrutura values
+    if len(num_cols) >= 2:
+        # Múltiplas séries — multiBar
+        datasets = []
+        for nc in num_cols[:3]:
+            try:
+                vals = [float(r.get(nc, 0) or 0) for r in valid_rows]
+                datasets.append({"label": nc, "values": vals})
+            except Exception:
+                pass
+        if not datasets:
+            return None
+        chart_type = "line" if is_temporal else "multiBar"
+        return {
+            "type": chart_type,
+            "title": "Análise comparativa",
+            "labels": labels,
+            "datasets": datasets
+        }
+    else:
+        # Série única
+        nc = num_cols[0]
+        try:
+            values = [float(r.get(nc, 0) or 0) for r in valid_rows]
+        except Exception:
+            return None
+        # Escolhe tipo: temporal → line, ≥5 itens → horizontalBar (ranking), poucos → bar
+        if is_temporal:
+            chart_type = "line"
+        elif len(values) >= 5:
+            chart_type = "horizontalBar"
+        else:
+            chart_type = "bar"
+        return {
+            "type": chart_type,
+            "title": "Análise",
+            "labels": labels,
+            "values": values,
+            "label": nc
+        }
+
+
+def _inject_chart_into_response(data, queries_full):
+    """Se a resposta de texto não tem [CHART] mas há rows, injeta o gráfico."""
+    if not queries_full:
+        return data
+    content = data.get("content", [])
+    text_block = next((b for b in content if b.get("type") == "text"), None)
+    if not text_block:
+        return data
+    text = text_block.get("text", "")
+    if "[CHART]" in text or "[chart]" in text.lower():
+        return data
+
+    # Pega a última query com rows úteis
+    chart_cfg = None
+    for q in reversed(queries_full):
+        cfg = _auto_chart_from_rows(q.get("rows", []), q.get("sql", ""))
+        if cfg:
+            chart_cfg = cfg
+            break
+
+    if not chart_cfg:
+        return data
+
+    # Injeta o gráfico no final do texto
+    chart_block = "\n\n[CHART]" + json.dumps(chart_cfg, ensure_ascii=False) + "[/CHART]"
+    text_block["text"] = text.rstrip() + chart_block
+    data["_auto_chart_injected"] = True
+    return data
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
@@ -519,9 +634,10 @@ def chat():
     }
 
     queries_run = []
-    last_text_data = None  # salva o último response com texto (fallback anti-vazio)
+    queries_full = []  # rows completos para auto-chart
+    last_text_data = None
 
-    for _ in range(8):   # loop agentico — máx 8 iterações
+    for _ in range(8):
         resp = requests.post("https://api.anthropic.com/v1/messages",
                              headers=hdrs, json=call, timeout=90)
         if resp.status_code != 200:
@@ -531,7 +647,6 @@ def chat():
         stop  = data.get("stop_reason")
         content = data.get("content", [])
 
-        # Guarda último response que tenha texto real (fallback)
         has_text = any(blk.get('type') == 'text' and blk.get('text', '').strip()
                        for blk in content)
         if has_text:
@@ -546,6 +661,7 @@ def chat():
                     try:
                         rows = sybase_query(sql, limit=500)
                         queries_run.append({"sql": sql, "linhas": len(rows), "db": "sybase"})
+                        queries_full.append({"sql": sql, "rows": rows})
                         payload_res = json.dumps({"linhas": len(rows), "dados": rows},
                                                  ensure_ascii=False, default=str)
                     except Exception as e:
@@ -570,24 +686,18 @@ def chat():
                 "Use SELECT TOP 5 * para verificar se a tabela existe. "
                 "Execute agora e relate o que encontrou."
             )})
-        elif stop == "end_turn" and _missing_chart_with_data(content, queries_run):
-            # Resposta tem dados mas esqueceu o gráfico — forçar inclusão
-            call["messages"].append({"role": "assistant", "content": content})
-            call["messages"].append({"role": "user", "content": (
-                "Sua resposta tem dados mas FALTOU o gráfico. "
-                "REFAÇA agora incluindo um [CHART]...[/CHART] com os mesmos dados. "
-                "Use horizontalBar para rankings, doughnut para participação, line para evolução, multiBar para comparar séries. "
-                "Mantenha o texto curto (2 parágrafos) e SEMPRE inclua o [CHART]."
-            )})
         else:
+            # Resposta final — injeta gráfico automaticamente se faltou
             if queries_run:
                 data["queries_executed"] = queries_run
+            data = _inject_chart_into_response(data, queries_full)
             return jsonify(data), resp.status_code
 
-    # Fallback: retorna último response com texto para evitar "resposta vazia"
+    # Fallback: último response com texto + auto-chart se aplicável
     fallback = last_text_data or data
     if queries_run:
         fallback["queries_executed"] = queries_run
+    fallback = _inject_chart_into_response(fallback, queries_full)
     return jsonify(fallback), 200
 
 @app.route("/api/chat/context")
