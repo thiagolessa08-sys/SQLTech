@@ -553,15 +553,10 @@ def _auto_chart_from_rows(rows, query_sql=""):
 
 
 def _inject_chart_into_response(data, queries_full):
-    """Se a resposta não tem [CHART] mas há rows, injeta o gráfico.
-    Sempre retorna data com debug info para diagnóstico."""
-    debug = {"version": "v3-auto-chart", "queries": len(queries_full), "step": "init"}
+    """Se a resposta não tem [CHART] válido mas há rows, injeta um gráfico.
+    Valida JSON do [CHART] existente; se for inválido, substitui pelo auto-gerado."""
+    debug = {"version": "v4-validate-chart", "queries": len(queries_full), "step": "init"}
     try:
-        if not queries_full:
-            debug["step"] = "no-queries-full"
-            data["_chart_debug"] = debug
-            return data
-
         content = data.get("content", [])
         text_block = next((b for b in content if b.get("type") == "text"), None)
         if not text_block:
@@ -570,30 +565,61 @@ def _inject_chart_into_response(data, queries_full):
             return data
 
         text = text_block.get("text", "")
-        if "[CHART]" in text or "[chart]" in text.lower():
-            debug["step"] = "already-has-chart"
+
+        # Procura por [CHART]...[/CHART] no texto e valida o JSON
+        chart_pattern = re.compile(r'\[CHART\]([\s\S]*?)\[/CHART\]', re.IGNORECASE)
+        matches = list(chart_pattern.finditer(text))
+
+        # Se há match completo com JSON válido → mantém
+        valid_existing = False
+        for m in matches:
+            try:
+                parsed = json.loads(m.group(1).strip())
+                # Valida estrutura mínima
+                if isinstance(parsed, dict) and parsed.get("type") and (parsed.get("values") or parsed.get("datasets")):
+                    valid_existing = True
+                    break
+            except Exception:
+                pass
+
+        if valid_existing:
+            debug["step"] = "valid-chart-exists"
             data["_chart_debug"] = debug
             return data
 
-        # Tenta cada query em ordem reversa
+        # Limpa qualquer [CHART] inválido / órfão / texto literal mencionando "[CHART]"
+        cleaned = chart_pattern.sub('', text)
+        # Remove tags soltas sem fechamento
+        cleaned = re.sub(r'\[CHART\][\s\S]*?$', '', cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r'\[/CHART\]', '', cleaned, flags=re.IGNORECASE)
+        cleaned = cleaned.rstrip()
+
+        if not queries_full:
+            text_block["text"] = cleaned
+            debug["step"] = "no-queries-full"
+            data["_chart_debug"] = debug
+            return data
+
         chart_cfg = None
         tried = []
         for q in reversed(queries_full):
-            rows_len = len(q.get("rows", []))
-            tried.append(rows_len)
-            cfg = _auto_chart_from_rows(q.get("rows", []), q.get("sql", ""))
+            rows = q.get("rows", [])
+            tried.append(len(rows))
+            cfg = _auto_chart_from_rows(rows, q.get("sql", ""))
             if cfg:
                 chart_cfg = cfg
                 break
 
         debug["tried_rows"] = tried
+        debug["had_invalid_chart"] = bool(matches)
         if not chart_cfg:
+            text_block["text"] = cleaned
             debug["step"] = "no-valid-chart"
             data["_chart_debug"] = debug
             return data
 
         chart_block = "\n\n[CHART]" + json.dumps(chart_cfg, ensure_ascii=False, default=str) + "[/CHART]"
-        text_block["text"] = text.rstrip() + chart_block
+        text_block["text"] = cleaned + chart_block
         debug["step"] = "injected"
         debug["type"] = chart_cfg.get("type")
         debug["labels_count"] = len(chart_cfg.get("labels", []))
