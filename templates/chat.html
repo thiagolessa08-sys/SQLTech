@@ -1090,16 +1090,31 @@ function appendMsg(role, text, typing = false) {
       <span class="typing-lbl">Pensando...</span>`;
   } else if (role === 'ai') {
     const cfgs = [];
-    const htmlText = text.replace(/\[CHART\]([\s\S]*?)\[\/CHART\]/gi, (_, raw) => {
+    const placeholders = {};
+    let phIdx = 0;
+    // 1) Extrai [CHART] e troca por um placeholder ÚNICO (não-HTML)
+    const textWithPh = text.replace(/\[CHART\]([\s\S]*?)\[\/CHART\]/gi, (_, raw) => {
       try {
         const cfg = JSON.parse(raw.trim());
         const card = makeDataCard(cfg);
         cfgs.push({ id: card.id, cfg });
-        return card.html;
-      } catch(e) { return ''; }
+        const key = `CHART_PLACEHOLDER_${phIdx++}_END`;
+        placeholders[key] = card.html;
+        return `\n\n${key}\n\n`;
+      } catch(e) {
+        console.warn('CHART JSON inválido:', e, raw.slice(0,200));
+        return '';
+      }
     });
-    let processed = md(htmlText);
-    // Adiciona label "Insights" no início se houver gráfico
+    // 2) Roda markdown SEM ver o HTML dos cards
+    let processed = md(textWithPh);
+    // 3) Substitui placeholders pelo HTML real do card (já fora do md)
+    Object.keys(placeholders).forEach(k => {
+      // Aceita o placeholder mesmo se estiver dentro de <p>...</p> do md
+      const re = new RegExp(`(?:<p>\\s*)?${k}(?:\\s*</p>)?`, 'g');
+      processed = processed.replace(re, placeholders[k]);
+    });
+    // 4) Label "Insights" se houver gráfico
     if (cfgs.length) {
       processed = `<div class="insights-label">Insights</div>` + processed;
     }
