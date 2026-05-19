@@ -262,9 +262,65 @@ main { padding: 0 !important; }
 }
 .data-card-body { padding: 14px 16px 12px; }
 .chart-view canvas { width: 100% !important; }
-.table-view { display: none; overflow-x: auto; }
-.table-view.show { display: block; }
+.table-view, .sql-view { display: none; }
+.table-view { overflow-x: auto; }
+.table-view.show, .sql-view.show { display: block; }
 .chart-view.hide { display: none; }
+
+/* SQL view */
+.sql-view { font-size: 12px; }
+.sql-query {
+  background: oklch(0.18 0.02 250);
+  color: oklch(0.92 0.015 95);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  line-height: 1.65;
+  overflow-x: auto;
+  white-space: pre;
+  margin-bottom: 8px;
+  position: relative;
+}
+.sql-query:last-child { margin-bottom: 0; }
+.sql-query .kw   { color: oklch(0.78 0.16 290); font-weight: 700; }
+.sql-query .fn   { color: oklch(0.82 0.16 60); }
+.sql-query .str  { color: oklch(0.78 0.15 160); }
+.sql-query .num  { color: oklch(0.85 0.14 75); }
+.sql-query .com  { color: oklch(0.55 0.02 130); font-style: italic; }
+.sql-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--ink-3);
+  margin-bottom: 6px;
+  padding: 0 2px;
+}
+.sql-meta .left {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.sql-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 10.5px;
+  font-family: inherit;
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: all .15s;
+}
+.sql-copy:hover { border-color: var(--green); color: var(--green-ink); background: var(--green-soft); }
+.sql-copy.copied { border-color: oklch(0.65 0.18 160); color: oklch(0.45 0.18 160); background: oklch(0.92 0.04 160); }
 
 /* Data table */
 .data-table {
@@ -562,17 +618,97 @@ const C = [
   'oklch(0.78 0.12 110)','oklch(0.55 0.15 340)',
 ];
 
+// ── SQL highlighter & formatter ───────────────────────────────────────────
+const SQL_KEYWORDS = ['SELECT','TOP','FROM','WHERE','JOIN','LEFT','RIGHT','INNER','OUTER','ON','GROUP BY','ORDER BY','HAVING','AS','AND','OR','NOT','IN','IS','NULL','LIKE','BETWEEN','UNION','DISTINCT','CASE','WHEN','THEN','ELSE','END','DESC','ASC','LIMIT','WITH'];
+const SQL_FUNCS = ['SUM','COUNT','AVG','MIN','MAX','YEAR','MONTH','DAY','ISNULL','CAST','CONVERT','LEFT','RIGHT','SUBSTRING','UPPER','LOWER','LIST','COALESCE','LENGTH','TRIM','DATEFORMAT','DATEPART','ROUND'];
+
+function highlightSql(sql) {
+  // Escape HTML
+  let s = sql.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Strings (single quoted)
+  s = s.replace(/'([^']*)'/g, '<span class="str">\'$1\'</span>');
+  // Comments
+  s = s.replace(/(--[^\n]*)/g, '<span class="com">$1</span>');
+  // Numbers
+  s = s.replace(/\b(\d+\.?\d*)\b/g, '<span class="num">$1</span>');
+  // Keywords (whole word, case-insensitive)
+  SQL_KEYWORDS.forEach(kw => {
+    const re = new RegExp(`\\b(${kw.replace(' ','\\s+')})\\b`, 'gi');
+    s = s.replace(re, '<span class="kw">$1</span>');
+  });
+  // Functions
+  SQL_FUNCS.forEach(fn => {
+    const re = new RegExp(`\\b(${fn})\\s*\\(`, 'gi');
+    s = s.replace(re, '<span class="fn">$1</span>(');
+  });
+  return s;
+}
+
+function formatSql(sql) {
+  // Quebra simples antes de keywords importantes
+  return sql
+    .replace(/\s+/g, ' ')
+    .replace(/\bSELECT\b/gi, 'SELECT')
+    .replace(/\bFROM\b/gi, '\nFROM')
+    .replace(/\bWHERE\b/gi, '\nWHERE')
+    .replace(/\b(LEFT|RIGHT|INNER|OUTER)?\s*JOIN\b/gi, m => '\n' + m.trim())
+    .replace(/\bGROUP BY\b/gi, '\nGROUP BY')
+    .replace(/\bORDER BY\b/gi, '\nORDER BY')
+    .replace(/\bHAVING\b/gi, '\nHAVING')
+    .replace(/\bUNION\b/gi, '\nUNION')
+    .trim();
+}
+
+function copySql(btn, sql) {
+  navigator.clipboard.writeText(sql).then(() => {
+    btn.classList.add('copied');
+    const orig = btn.innerHTML;
+    btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Copiado!`;
+    setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = orig; }, 1600);
+  });
+}
+
+function buildSqlView(queries) {
+  if (!queries || !queries.length) {
+    return `<div style="text-align:center;padding:24px;color:var(--ink-3);font-size:12px">Nenhuma query SQL executada.</div>`;
+  }
+  return queries.map((q, i) => {
+    const formatted = formatSql(q.sql);
+    const escaped = q.sql.replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+    return `
+      <div class="sql-meta">
+        <span class="left">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4.03 3-9 3S3 13.66 3 12M21 5v14c0 1.66-4.03 3-9 3S3 20.66 3 19V5"/>
+          </svg>
+          Query ${i+1} · ${(q.linhas||0).toLocaleString('pt-BR')} linhas
+        </span>
+        <button class="sql-copy" onclick="copySql(this, this.dataset.sql)" data-sql="${escaped}">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          Copiar
+        </button>
+      </div>
+      <div class="sql-query">${highlightSql(formatted)}</div>
+    `;
+  }).join('');
+}
+
 // ── Render chart ──────────────────────────────────────────────────────────
 let seq = 0;
+let lastQueries = []; // queries do último response (usado pelos cards)
+
 function makeDataCard(cfg) {
   const id = 'ch_' + (++seq);
   const tbId = 'tb_' + seq;
   const cardId = 'dc_' + seq;
+  const queriesSnap = [...lastQueries]; // snapshot das queries pra esse card
 
-  // Build table HTML
   const tableHtml = buildTable(cfg, tbId);
+  const sqlHtml = buildSqlView(queriesSnap);
 
-  return { id, tbId, cardId, html: `
+  return { id, tbId, cardId, queriesSnap, html: `
     <div class="data-card" id="${cardId}">
       <div class="data-card-head">
         <span class="data-card-title">${cfg.title || 'Resultado'}</span>
@@ -585,15 +721,18 @@ function makeDataCard(cfg) {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>
             Tabela
           </button>
+          <button onclick="switchView('${cardId}','sql')" id="vbtn_sql_${cardId}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            SQL
+          </button>
         </div>
       </div>
       <div class="data-card-body">
         <div class="chart-view" id="cv_${cardId}">
           <canvas id="${id}" height="240"></canvas>
         </div>
-        <div class="table-view" id="tv_${cardId}">
-          ${tableHtml}
-        </div>
+        <div class="table-view" id="tv_${cardId}">${tableHtml}</div>
+        <div class="sql-view" id="sv_${cardId}">${sqlHtml}</div>
       </div>
     </div>`
   };
@@ -602,14 +741,28 @@ function makeDataCard(cfg) {
 function switchView(cardId, mode) {
   const cv = document.getElementById('cv_' + cardId);
   const tv = document.getElementById('tv_' + cardId);
+  const sv = document.getElementById('sv_' + cardId);
   const btnC = document.getElementById('vbtn_chart_' + cardId);
   const btnT = document.getElementById('vbtn_table_' + cardId);
+  const btnS = document.getElementById('vbtn_sql_' + cardId);
+
+  cv.classList.remove('hide');
+  tv.classList.remove('show');
+  sv.classList.remove('show');
+  btnC.classList.remove('active');
+  btnT.classList.remove('active');
+  btnS.classList.remove('active');
+
   if (mode === 'chart') {
-    cv.classList.remove('hide'); tv.classList.remove('show');
-    btnC.classList.add('active'); btnT.classList.remove('active');
+    btnC.classList.add('active');
+  } else if (mode === 'table') {
+    cv.classList.add('hide');
+    tv.classList.add('show');
+    btnT.classList.add('active');
   } else {
-    cv.classList.add('hide'); tv.classList.add('show');
-    btnC.classList.remove('active'); btnT.classList.add('active');
+    cv.classList.add('hide');
+    sv.classList.add('show');
+    btnS.classList.add('active');
   }
 }
 
@@ -1087,15 +1240,17 @@ async function sendMsg() {
       appendMsg('ai', '⚠️ Resposta vazia. Tente reformular.');
       history.pop();
     } else {
+      // Guarda as queries ANTES de criar os cards (makeDataCard usa lastQueries)
+      lastQueries = data.queries_executed || [];
       const msgEl = appendMsg('ai', reply);
       history.push({ role:'assistant', content: reply });
-      if (data.queries_executed?.length) {
-        const total = data.queries_executed.reduce((s,q)=>s+q.linhas,0);
+      if (lastQueries.length) {
+        const total = lastQueries.reduce((s,q)=>s+q.linhas,0);
         const badge = document.createElement('div');
         badge.className = 'sql-badge';
         badge.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
           <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4.03 3-9 3S3 13.66 3 12M21 5v14c0 1.66-4.03 3-9 3S3 20.66 3 19V5"/>
-        </svg>${data.queries_executed.length} consulta(s) · ${total.toLocaleString('pt-BR')} linhas`;
+        </svg>${lastQueries.length} consulta(s) · ${total.toLocaleString('pt-BR')} linhas`;
         msgEl.querySelector('.msg-body').appendChild(badge);
       }
     }
