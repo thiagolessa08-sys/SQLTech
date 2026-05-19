@@ -675,21 +675,58 @@ PREFEITURA_IPTU_PAGO → IPTU pago
 ⭐ Pergunta com nome/CPF/bairro → USE SOMENTE tabelas IPTU.
 
 ══════════════════════════════════════
+EXEMPLOS DE QUERIES CORRETAS
+══════════════════════════════════════
+1) Despesa por secretaria 2025:
+SELECT TOP 10 i.DS_UO AS Secretaria, SUM(f.VL_SALDO_MES_EMPENHADO) AS Empenhado
+FROM pref_aruja_sp.FATO_BIORC_MENSAL_INTERVENCAO_DOTACAO f
+JOIN pref_aruja_sp.DIM_BIORC_INSTITUCIONAL i ON f.SK_INSTITUCIONAL = i.SK_INSTITUCIONAL
+JOIN pref_aruja_sp.DIM_BIORC_DATA_CALENDARIO d ON f.SK_DATA_CALENDARIO_MES = d.SK_DATA_CALENDARIO
+WHERE d.NO_ANO = 2025 AND i.CD_ORGAO = '1' AND i.DS_UO <> i.DS_ORGAO
+GROUP BY i.DS_UO ORDER BY Empenhado DESC
+
+2) Receita líquida 2025:
+SELECT SUM(f.VL_ARRECADACAO_RECEITA) AS receita
+FROM pref_aruja_sp.FATO_BIORC_EXECUCAO_RECEITA f
+JOIN pref_aruja_sp.DIM_BIORC_DATA_CALENDARIO d ON f.SK_DATA_CALENDARIO_ANO = d.SK_DATA_CALENDARIO
+WHERE d.NO_ANO = 2025 AND f.CD_TIPO_NATUREZA_RECEITA IN (1,2)
+
+3) Evolução mensal de despesa Saúde 2025:
+SELECT d.NO_MES AS Mes, SUM(f.VL_SALDO_MES_EMPENHADO) AS Empenhado
+FROM pref_aruja_sp.FATO_BIORC_MENSAL_INTERVENCAO_DOTACAO f
+JOIN pref_aruja_sp.DIM_BIORC_INSTITUCIONAL i ON f.SK_INSTITUCIONAL = i.SK_INSTITUCIONAL
+JOIN pref_aruja_sp.DIM_BIORC_DATA_CALENDARIO d ON f.SK_DATA_CALENDARIO_MES = d.SK_DATA_CALENDARIO
+WHERE d.NO_ANO = 2025 AND i.DS_UO LIKE '%Saúde%'
+GROUP BY d.NO_MES ORDER BY d.NO_MES
+
+══════════════════════════════════════
 EXECUÇÃO
 ══════════════════════════════════════
 ⚡ Chame query_database IMEDIATAMENTE — sem anúncio.
-NUNCA consulte sys.systable/INFORMATION_SCHEMA.
+NUNCA consulte sys.systable/INFORMATION_SCHEMA/metadados.
 Use TOP 50, sempre agregue (SUM/COUNT/GROUP BY), nunca SELECT *.
+NUNCA faça mais de 3 queries para responder uma pergunta — se 1 query não basta, refine ela, não rode várias exploratórias.
+
+══════════════════════════════════════
+🚫 PROIBIDO NA RESPOSTA AO USUÁRIO
+══════════════════════════════════════
+NUNCA mencione nomes técnicos de colunas/tabelas como:
+  SK_DATA_CALENDARIO_MES, SK_INSTITUCIONAL, VL_SALDO_MES_EMPENHADO,
+  DS_UO, NO_ANO, CD_ORGAO, FATO_BIORC_..., DIM_BIORC_..., etc.
+O usuário NÃO conhece o esquema. Apresente apenas:
+  • Nomes humanizados: "Secretaria", "Mês", "Empenhado", "Pago", "Saúde", etc.
+  • Valores em formato BR: R$ 1,2 milhões, 35% do total.
+NUNCA escreva "vou verificar", "vou tentar", "os dados retornam X" — apresente o RESULTADO.
 
 ══════════════════════════════════════
 RESPOSTA
 ══════════════════════════════════════
 Responda em português, direto. Máx 2 parágrafos curtos.
 SE houver dados tabulares (2+ categorias), inclua [CHART]:
-[CHART]{"type":"horizontalBar","title":"Título","labels":["A","B"],"values":[100,200],"label":"Série"}[/CHART]
+[CHART]{"type":"horizontalBar","title":"Título","labels":["Saúde","Educação"],"values":[100,200],"label":"Empenhado"}[/CHART]
 Tipos: bar | horizontalBar | line | area | multiBar | stackedBar | doughnut | pie
-multiBar/stackedBar: use "datasets":[{"label":"X","values":[...]}]
-Values = números puros, sem R$. Máx 12 itens.`;
+multiBar/stackedBar: use "datasets":[{"label":"Empenhado","values":[...]}]
+Values = números puros, sem R$. Labels = nomes humanizados, nunca códigos. Máx 12 itens.`;
 }
 
 // ============================================================================

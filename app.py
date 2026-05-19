@@ -407,6 +407,10 @@ _ANNOUNCEMENT_PHRASES = [
     'deixe-me tentar', 'vou localizar', 'preciso localizar', 'vou explorar',
     'vou investigar', 'vou pesquisar', 'vou consultar', 'let me', 'trying',
     'vou checar', 'vou analisar antes', 'primeiro preciso',
+    'vou ajustar', 'vou refinar', 'vou refazer', 'vou tentar outra',
+    'vou rodar', 'vou executar', 'preciso verificar', 'precisa verificar',
+    'os dados mostram', 'os dados retornam', 'os resultados mostram',
+    'sk_', 'vl_', 'ds_', 'no_ano',  # se aparece SK_/VL_/DS_ no texto, é debugando
 ]
 
 _REFUSAL_PHRASES = [
@@ -476,11 +480,15 @@ def _to_float(v):
 
 
 # Colunas técnicas que NÃO devem virar series no gráfico
-_SKIP_COL_PREFIXES = ('SK_', 'ID_', 'FK_', 'PK_')
+_SKIP_COL_PREFIXES = ('SK_', 'ID_', 'FK_', 'PK_', 'IC_', 'FL_', 'IND_')
 _SKIP_COL_EXACT = {'ID', 'SK', 'CD_ORGAO', 'CD_TIPO_NATUREZA_RECEITA',
                    'NR_ANO_EMPENHO', 'CD_NATUREZA_DESPESA', 'CD_GRUPO',
                    'CD_ELEMENTO', 'CD_FONTE_RECURSO', 'CD_UNIDADE_GESTORA',
-                   'CD_MODALIDADE'}
+                   'CD_MODALIDADE', 'FICHA_DESPESA', 'FICHA_RECEITA',
+                   'NUM_FICHA', 'CD_EMPENHO', 'CD_LIQUIDACAO', 'CD_PAGAMENTO',
+                   'NR_EMPENHO', 'NR_LIQUIDACAO'}
+_SKIP_COL_CONTAINS = ('_FLAG', '_ATIVO', '_FICHA', '_HASH', '_VERSAO',
+                      '_VIGENTE', '_USUARIO', '_DATA_CARGA')
 
 # Tradução de nomes técnicos → label amigável
 _LABEL_MAP = {
@@ -536,7 +544,9 @@ def _should_skip_col(col_name):
     cu = col_name.upper()
     if cu in _SKIP_COL_EXACT:
         return True
-    return any(cu.startswith(p) for p in _SKIP_COL_PREFIXES)
+    if any(cu.startswith(p) for p in _SKIP_COL_PREFIXES):
+        return True
+    return any(c in cu for c in _SKIP_COL_CONTAINS)
 
 def _prettify_col(col_name):
     """Converte nome técnico em label amigável."""
@@ -604,6 +614,34 @@ def _auto_chart_from_rows(rows, query_sql=""):
     valid_rows = valid_rows[:12]
 
     labels = [str(r.get(label_col, ''))[:40] for r in valid_rows]
+
+    # QUALIDADE: labels devem ter variação significativa
+    # Rejeita se todos iguais, ou se todos têm 1 caractere (provavelmente caracteres soltos)
+    unique_labels = set(labels)
+    if len(unique_labels) < 2:
+        return None  # tudo igual — não dá gráfico
+    avg_len = sum(len(l) for l in labels) / max(len(labels), 1)
+    if avg_len < 2:
+        return None  # labels muito curtos (caracteres soltos)
+
+    # QUALIDADE: valida que pelo menos UMA coluna numérica tem valores grandes
+    # (evita pegar códigos/flags/fichas como série)
+    def has_meaningful_values(col):
+        vals = [_to_float(r.get(col)) for r in valid_rows]
+        vals = [v for v in vals if v is not None and v != 0]
+        if len(vals) < 2:
+            return False
+        # Pelo menos um valor > 1000 (R$ significativo) OU variação grande
+        max_v = max(abs(v) for v in vals)
+        if max_v > 1000:
+            return True
+        # Se valores pequenos mas variação > 10x, ainda pode ser %, qtd, etc.
+        min_v = min(abs(v) for v in vals if v != 0)
+        return min_v > 0 and (max_v / min_v) > 10
+
+    num_cols = [nc for nc in num_cols if has_meaningful_values(nc)]
+    if not num_cols:
+        return None
 
     sql_low = (query_sql or "").lower()
     is_temporal = any(w in sql_low for w in ['no_mes', 'ds_mes', 'datepart', 'dateformat'])
@@ -839,7 +877,7 @@ def chat():
     queries_full = []  # rows completos para auto-chart
     last_text_data = None
 
-    for _ in range(8):
+    for _ in range(5):
         resp = requests.post("https://api.anthropic.com/v1/messages",
                              headers=hdrs, json=call, timeout=90)
         if resp.status_code != 200:
